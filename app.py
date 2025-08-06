@@ -56,7 +56,7 @@ async def get_users():
     return get_all_users()
 
 @app.get("/admin/export")
-async def export_csv():
+async def export_xlsx():
     from openpyxl import Workbook
     
     history = get_checkin_history()
