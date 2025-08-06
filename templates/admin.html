@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - RFID Checkin</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Admin Dashboard</h1>
+            <a href="/" class="back-link">← Back to Checkin</a>
+        </div>
+        <div class="controls">
+            <button onclick="refreshActiveTab()">Refresh</button>
+            <button onclick="exportExcel()">Export Excel</button>
+            <button class="danger-button" onclick="showDeleteConfirmation()">Delete All Users</button>
+        </div>
+    </div>
+
+    <div class="import-section">
+        <h2>Import Users</h2>
+        <p>Upload an Excel (.xlsx) file with headers: First Name, Last Name, Employee ID, Table Number</p>
+        <div class="file-input">
+            <input type="file" id="excel-file" accept=".xlsx">
+            <button onclick="importFile()">Import Users</button>
+        </div>
+        <div id="import-message" class="message"></div>
+    </div>
+
+    <div class="section">
+        <div class="tab-container">
+            <button class="tab-button active" onclick="switchTab('history')">Checkin History</button>
+            <button class="tab-button" onclick="switchTab('users')">Users</button>
+        </div>
+        
+        <div id="history-tab" class="tab-content active">
+            <div id="history-loading" class="loading">Loading...</div>
+            <table id="history-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Employee ID</th>
+                        <th>Table</th>
+                        <th>Checkin Time</th>
+                    </tr>
+                </thead>
+                <tbody id="history-body">
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="users-tab" class="tab-content">
+            <div id="users-loading" class="loading">Loading...</div>
+            <table id="users-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Employee ID</th>
+                        <th>Table Number</th>
+                    </tr>
+                </thead>
+                <tbody id="users-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #dc3545;">⚠️ Delete All Users</h3>
+            <p>This action will permanently delete ALL users from the system.</p>
+            <p><strong>This cannot be undone!</strong></p>
+            <p>Type <strong>DELETE ALL USERS</strong> to confirm:</p>
+            <input type="text" id="confirmInput" class="confirm-input" placeholder="Type confirmation here">
+            <div class="modal-buttons">
+                <button onclick="closeDeleteModal()">Cancel</button>
+                <button class="danger-button" onclick="confirmDeleteUsers()">Delete All Users</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>
