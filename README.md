@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 2. Run the application:
 ```bash
-python app.py
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 3. Access the application:
