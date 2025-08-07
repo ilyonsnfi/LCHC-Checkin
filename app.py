@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 import io
 from datetime import datetime
 from openpyxl import load_workbook
-from models import CheckinResponse, ImportResponse, User, DeleteResponse, CreateUserResponse
-from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data
+from models import CheckinResponse, ImportResponse, User, DeleteResponse, CreateUserResponse, Settings, SettingsUpdate, SettingsResponse
+from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data, get_settings, update_settings
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -23,7 +23,13 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def checkin_page(request: Request):
-    return templates.TemplateResponse("checkin.html", {"request": request})
+    settings = get_settings()
+    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings})
+
+@app.get("/preview", response_class=HTMLResponse)
+async def checkin_preview(request: Request):
+    settings = get_settings()
+    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings, "preview_mode": True})
 
 @app.post("/checkin", response_model=CheckinResponse)
 async def checkin(badge_id: str = Form(...)):
@@ -277,6 +283,73 @@ async def create_user_endpoint(user: User):
             success=False,
             message=f"Error creating user: {str(e)}"
         )
+
+@app.get("/admin/settings", response_model=Settings)
+async def get_settings_endpoint():
+    settings_dict = get_settings()
+    return Settings(**settings_dict)
+
+@app.put("/admin/settings", response_model=SettingsResponse)
+async def update_settings_endpoint(settings_update: SettingsUpdate):
+    try:
+        # Convert to dict, excluding None values
+        update_dict = {k: v for k, v in settings_update.dict().items() if v is not None}
+        
+        if not update_dict:
+            return SettingsResponse(
+                success=False,
+                message="No settings provided to update"
+            )
+        
+        success = update_settings(update_dict)
+        
+        if success:
+            updated_settings = get_settings()
+            return SettingsResponse(
+                success=True,
+                message="Settings updated successfully",
+                settings=Settings(**updated_settings)
+            )
+        else:
+            return SettingsResponse(
+                success=False,
+                message="Failed to update settings"
+            )
+    except Exception as e:
+        return SettingsResponse(
+            success=False,
+            message=f"Error updating settings: {str(e)}"
+        )
+
+@app.post("/admin/upload-background")
+async def upload_background(file: UploadFile = File(...)):
+    try:
+        if not file.content_type or not file.content_type.startswith('image/'):
+            return {"success": False, "message": "Please upload an image file"}
+        
+        # Create uploads directory if it doesn't exist
+        import os
+        uploads_dir = "static/uploads"
+        os.makedirs(uploads_dir, exist_ok=True)
+        
+        # Save file with unique name
+        import uuid
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        filename = f"background_{uuid.uuid4().hex}.{file_extension}"
+        file_path = f"{uploads_dir}/{filename}"
+        
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Update settings with new background image path
+        web_path = f"/static/uploads/{filename}"
+        update_settings({"background_image": web_path})
+        
+        return {"success": True, "message": "Background image uploaded successfully", "path": web_path}
+    
+    except Exception as e:
+        return {"success": False, "message": f"Error uploading image: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn

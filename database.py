@@ -33,6 +33,20 @@ def init_db():
         )
     """)
     
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+    
+    # Initialize default settings if they don't exist
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("welcome_banner", "RFID Checkin Station"))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("secondary_banner", "Scan your badge to check in"))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("background_color", "#f5f5f5"))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("highlight_color", "#007bff"))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("background_image", ""))
+    
     conn.commit()
     conn.close()
 
@@ -314,3 +328,29 @@ def get_export_data() -> dict:
             for row in users_without_checkins
         ]
     }
+
+def get_settings() -> dict:
+    """Get all settings as a dictionary"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT key, value FROM settings")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return {row["key"]: row["value"] for row in rows}
+
+def update_settings(settings: dict) -> bool:
+    """Update multiple settings"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        for key, value in settings.items():
+            cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.Error:
+        conn.close()
+        return False

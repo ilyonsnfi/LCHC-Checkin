@@ -1,15 +1,50 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const checkinForm = document.getElementById('checkin-form');
-    const badgeInput = document.getElementById('badge-input');
     const result = document.getElementById('result');
+    let hideTimeout = null; // Track the current timeout
+    let badgeInput = ''; // Store the current input
     
-    checkinForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    // Listen for all keypress events on the document
+    document.addEventListener('keypress', function(e) {
+        // Ignore keypresses when typing in admin link area or if Ctrl/Alt/Cmd is pressed
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || 
+            e.ctrlKey || e.altKey || e.metaKey) {
+            return;
+        }
         
-        const badgeId = badgeInput.value.trim();
+        const char = e.key;
         
-        if (!badgeId) return;
+        // Handle Enter key as submission
+        if (char === 'Enter') {
+            if (badgeInput.trim()) {
+                processCheckin(badgeInput.trim());
+                badgeInput = ''; // Clear input
+            }
+            return;
+        }
         
+        // Ignore non-printable characters
+        if (char.length !== 1) {
+            return;
+        }
+        
+        // Add character to input
+        badgeInput += char;
+    });
+    
+    // Handle backspace separately since it's a keydown event
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || 
+            e.ctrlKey || e.altKey || e.metaKey) {
+            return;
+        }
+        
+        if (e.key === 'Backspace') {
+            badgeInput = badgeInput.slice(0, -1);
+            e.preventDefault(); // Prevent browser back navigation
+        }
+    });
+    
+    async function processCheckin(badgeId) {
         try {
             const formData = new FormData();
             formData.append('badge_id', badgeId);
@@ -28,27 +63,60 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="table-info">Table ${data.table_number}</div>
                     <div>Checked in at ${data.time}</div>
                 `;
+                // Play success sound
+                playSound('success-sound');
             } else {
                 result.className = 'error';
                 result.innerHTML = data.message || 'Checkin failed';
+                // Play error sound
+                playSound('error-sound');
             }
             
             result.style.display = 'block';
-            badgeInput.value = '';
             
-            setTimeout(() => {
+            // Clear any existing timeout
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+            }
+            
+            // Set a new timeout
+            hideTimeout = setTimeout(() => {
                 result.style.display = 'none';
-                badgeInput.focus();
+                hideTimeout = null; // Clear the reference
             }, 5000);
             
         } catch (error) {
             result.className = 'error';
             result.innerHTML = 'Error processing checkin';
             result.style.display = 'block';
-            badgeInput.value = '';
+            // Play error sound for network/processing errors
+            playSound('error-sound');
+            
+            // Clear any existing timeout
+            if (hideTimeout) {
+                clearTimeout(hideTimeout);
+            }
+            
+            // Set a new timeout for error case too
+            hideTimeout = setTimeout(() => {
+                result.style.display = 'none';
+                hideTimeout = null; // Clear the reference
+            }, 5000);
         }
-    });
-    
-    // Focus on the input field when page loads
-    badgeInput.focus();
+    }
 });
+
+function playSound(soundId) {
+    try {
+        const audio = document.getElementById(soundId);
+        if (audio) {
+            audio.currentTime = 0; // Reset to beginning
+            audio.play().catch(e => {
+                // Silently handle autoplay restrictions
+                console.log('Audio playback prevented:', e);
+            });
+        }
+    } catch (error) {
+        console.log('Error playing sound:', error);
+    }
+}

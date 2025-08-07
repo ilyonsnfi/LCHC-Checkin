@@ -35,6 +35,7 @@
                 <button class="tab-button active" onclick="switchTab('users')">Users</button>
                 <button class="tab-button" onclick="switchTab('tables')">Tables</button>
                 <button class="tab-button" onclick="switchTab('history')">Checkin History</button>
+                <button class="tab-button" onclick="switchTab('settings')">Settings</button>
             </div>
             <div class="global-search">
                 <input type="text" id="global-search-input" placeholder="Search..." style="padding: 8px; width: 200px; border: 1px solid #ddd; border-radius: 4px;">
@@ -98,6 +99,66 @@
             <div id="tables-container" style="display: none;">
                 <div id="tables-grid" class="tables-grid">
                     <!-- Tables will be populated here -->
+                </div>
+            </div>
+        </div>
+        
+        <div id="settings-tab" class="tab-content">
+            <div id="settings-loading" class="loading">Loading...</div>
+            <div id="settings-container" style="display: none;">
+                <div style="display: flex; gap: 30px;">
+                    <div style="flex: 1;">
+                        <h3>Checkin Page Settings</h3>
+                
+                <div class="settings-section">
+                    <h4>Text Content</h4>
+                    <div class="form-row">
+                        <label for="welcome-banner">Welcome Banner:</label>
+                        <input type="text" id="welcome-banner" placeholder="Main title text">
+                    </div>
+                    <div class="form-row">
+                        <label for="secondary-banner">Secondary Banner:</label>
+                        <input type="text" id="secondary-banner" placeholder="Subtitle text">
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Colors</h4>
+                    <div class="form-row">
+                        <label for="background-color">Text Color:</label>
+                        <input type="color" id="background-color">
+                    </div>
+                    <div class="form-row">
+                        <label for="highlight-color">Container Background:</label>
+                        <input type="color" id="highlight-color">
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Background Image</h4>
+                    <div class="form-row">
+                        <label for="background-file">Upload Background Image:</label>
+                        <input type="file" id="background-file" accept="image/*" onchange="handleBackgroundUpload()">
+                    </div>
+                    <div id="current-background" style="margin-top: 10px;"></div>
+                    <div id="background-message" class="message"></div>
+                    <div id="remove-background-section" style="margin-top: 10px; display: none;">
+                        <button onclick="confirmRemoveBackground()" style="background-color: #dc3545;">Remove Background Image</button>
+                    </div>
+                </div>
+                
+                <div class="settings-buttons">
+                    <button onclick="saveSettings()">Save Settings</button>
+                    <button onclick="resetSettings()" style="background-color: #6c757d;">Reset to Defaults</button>
+                </div>
+                        
+                        <div id="settings-message" class="message"></div>
+                    </div>
+                    
+                    <div style="flex: 1;">
+                        <h3>Live Preview</h3>
+                        <iframe id="checkin-preview" src="/preview" style="border: 2px solid #ddd; border-radius: 10px; width: 100%; height: 500px; background: white;" sandbox="allow-same-origin"></iframe>
+                    </div>
                 </div>
             </div>
         </div>

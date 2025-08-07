@@ -21,6 +21,8 @@ function switchTab(tab) {
         loadUsers(searchQuery);
     } else if (tab === 'tables') {
         loadTables(searchQuery);
+    } else if (tab === 'settings') {
+        loadSettings();
     }
 }
 
@@ -34,6 +36,8 @@ function refreshActiveTab() {
         loadUsers(searchQuery);
     } else if (currentTab === 'tables') {
         loadTables(searchQuery);
+    } else if (currentTab === 'settings') {
+        loadSettings();
     }
 }
 
@@ -387,3 +391,242 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load the default tab (users)
     loadUsers();
 });
+
+async function loadSettings() {
+    const loading = document.getElementById('settings-loading');
+    const container = document.getElementById('settings-container');
+    
+    loading.style.display = 'block';
+    container.style.display = 'none';
+    
+    try {
+        const response = await fetch('/admin/settings');
+        const settings = await response.json();
+        
+        // Populate form fields
+        document.getElementById('welcome-banner').value = settings.welcome_banner;
+        document.getElementById('secondary-banner').value = settings.secondary_banner;
+        document.getElementById('background-color').value = settings.background_color;
+        document.getElementById('highlight-color').value = settings.highlight_color;
+        
+        // Show current background image
+        const currentBg = document.getElementById('current-background');
+        const removeSection = document.getElementById('remove-background-section');
+        if (settings.background_image) {
+            currentBg.innerHTML = `<p>Current background image:</p><img src="${settings.background_image}" alt="Current background">`;
+            removeSection.style.display = 'block';
+        } else {
+            currentBg.innerHTML = '<p>No background image set</p>';
+            removeSection.style.display = 'none';
+        }
+        
+        loading.style.display = 'none';
+        container.style.display = 'block';
+        
+        // No need to initialize preview - iframe loads automatically
+        
+    } catch (error) {
+        loading.innerHTML = 'Error loading settings';
+        console.error('Error:', error);
+    }
+}
+
+async function saveSettings() {
+    const welcomeBanner = document.getElementById('welcome-banner').value.trim();
+    const secondaryBanner = document.getElementById('secondary-banner').value.trim();
+    const backgroundColor = document.getElementById('background-color').value;
+    const highlightColor = document.getElementById('highlight-color').value;
+    
+    if (!welcomeBanner || !secondaryBanner) {
+        showSettingsMessage('Please fill in all text fields', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/settings', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                welcome_banner: welcomeBanner,
+                secondary_banner: secondaryBanner,
+                background_color: backgroundColor,
+                highlight_color: highlightColor
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSettingsMessage('Settings saved successfully', 'success');
+            // Refresh the preview iframe
+            reloadPreview();
+        } else {
+            showSettingsMessage(result.message, 'error');
+        }
+        
+    } catch (error) {
+        showSettingsMessage('Error saving settings', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function resetSettings() {
+    const confirmed = confirm('Are you sure you want to reset all settings to defaults?');
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch('/admin/settings', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                welcome_banner: 'RFID Checkin Station',
+                secondary_banner: 'Scan your badge to check in',
+                background_color: '#f5f5f5',
+                highlight_color: '#007bff',
+                background_image: ''
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSettingsMessage('Settings reset to defaults', 'success');
+            loadSettings(); // Reload to show updated values
+            reloadPreview(); // Refresh preview
+        } else {
+            showSettingsMessage(result.message, 'error');
+        }
+        
+    } catch (error) {
+        showSettingsMessage('Error resetting settings', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function handleBackgroundUpload() {
+    const fileInput = document.getElementById('background-file');
+    
+    if (!fileInput.files[0]) {
+        return;
+    }
+    
+    // Check if there's already a background image
+    const currentBg = document.getElementById('current-background');
+    const hasExistingImage = currentBg.innerHTML.includes('<img');
+    
+    if (hasExistingImage) {
+        const confirmed = confirm('A background image already exists. Do you want to replace it with the new image?');
+        if (!confirmed) {
+            fileInput.value = ''; // Clear the file input
+            return;
+        }
+    }
+    
+    await uploadBackgroundImage();
+}
+
+async function uploadBackgroundImage() {
+    const fileInput = document.getElementById('background-file');
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/admin/upload-background', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showBackgroundMessage('Background image uploaded successfully', 'success');
+            fileInput.value = '';
+            // Update current background display
+            const currentBg = document.getElementById('current-background');
+            const removeSection = document.getElementById('remove-background-section');
+            currentBg.innerHTML = `<p>Current background image:</p><img src="${result.path}" alt="Current background">`;
+            removeSection.style.display = 'block';
+            // Update preview
+            reloadPreview();
+        } else {
+            showBackgroundMessage(result.message, 'error');
+        }
+        
+    } catch (error) {
+        showBackgroundMessage('Error uploading image', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function confirmRemoveBackground() {
+    const confirmed = confirm('Are you sure you want to remove the background image? This cannot be undone.');
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch('/admin/settings', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                background_image: ''
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showBackgroundMessage('Background image removed successfully', 'success');
+            // Update display
+            const currentBg = document.getElementById('current-background');
+            const removeSection = document.getElementById('remove-background-section');
+            currentBg.innerHTML = '<p>No background image set</p>';
+            removeSection.style.display = 'none';
+            // Update preview
+            reloadPreview();
+        } else {
+            showBackgroundMessage(result.message, 'error');
+        }
+        
+    } catch (error) {
+        showBackgroundMessage('Error removing background image', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function showSettingsMessage(text, type) {
+    const message = document.getElementById('settings-message');
+    message.textContent = text;
+    message.className = `message ${type}`;
+    message.style.display = 'block';
+    
+    setTimeout(() => {
+        message.style.display = 'none';
+    }, 5000);
+}
+
+function showBackgroundMessage(text, type) {
+    const message = document.getElementById('background-message');
+    message.textContent = text;
+    message.className = `message ${type}`;
+    message.style.display = 'block';
+    
+    setTimeout(() => {
+        message.style.display = 'none';
+    }, 5000);
+}
+
+function reloadPreview() {
+    const iframe = document.getElementById('checkin-preview');
+    if (iframe) {
+        // Add timestamp to force reload
+        const baseUrl = '/preview';
+        const timestamp = new Date().getTime();
+        iframe.src = `${baseUrl}?t=${timestamp}`;
+    }
+}

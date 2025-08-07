@@ -318,3 +318,74 @@ tr:hover {
     font-style: italic;
     padding: 40px;
 }
+
+.settings-section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 20px;
+}
+
+.settings-section h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #495057;
+}
+
+.settings-section .form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.settings-section .form-row:last-child {
+    margin-bottom: 0;
+}
+
+.settings-section label {
+    min-width: 150px;
+    margin-right: 15px;
+    font-weight: 500;
+}
+
+.settings-section input[type="text"],
+.settings-section input[type="color"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.settings-section input[type="color"] {
+    width: 60px;
+    height: 40px;
+    flex: none;
+    padding: 2px;
+    cursor: pointer;
+}
+
+.settings-section input[type="file"] {
+    flex: 1;
+    margin-right: 10px;
+}
+
+.settings-buttons {
+    display: flex;
+    gap: 15px;
+    margin: 30px 0;
+}
+
+#current-background {
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+#current-background img {
+    max-width: 200px;
+    max-height: 100px;
+    border-radius: 4px;
+}

@@ -49,3 +49,22 @@ class CreateUserResponse(BaseModel):
     success: bool
     message: str
     user: Optional[User] = None
+
+class Settings(BaseModel):
+    welcome_banner: str
+    secondary_banner: str
+    background_color: str
+    highlight_color: str
+    background_image: str
+
+class SettingsUpdate(BaseModel):
+    welcome_banner: Optional[str] = None
+    secondary_banner: Optional[str] = None
+    background_color: Optional[str] = None
+    highlight_color: Optional[str] = None
+    background_image: Optional[str] = None
+
+class SettingsResponse(BaseModel):
+    success: bool
+    message: str
+    settings: Optional[Settings] = None
