@@ -30,12 +30,18 @@
     </div>
 
     <div class="section">
-        <div class="tab-container">
-            <button class="tab-button active" onclick="switchTab('history')">Checkin History</button>
-            <button class="tab-button" onclick="switchTab('users')">Users</button>
+        <div class="section-header">
+            <div class="tab-container">
+                <button class="tab-button active" onclick="switchTab('users')">Users</button>
+                <button class="tab-button" onclick="switchTab('tables')">Tables</button>
+                <button class="tab-button" onclick="switchTab('history')">Checkin History</button>
+            </div>
+            <div class="global-search">
+                <input type="text" id="global-search-input" placeholder="Search..." style="padding: 8px; width: 200px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
         </div>
         
-        <div id="history-tab" class="tab-content active">
+        <div id="history-tab" class="tab-content">
             <div id="history-loading" class="loading">Loading...</div>
             <table id="history-table" style="display: none;">
                 <thead>
@@ -51,7 +57,28 @@
             </table>
         </div>
         
-        <div id="users-tab" class="tab-content">
+        <div id="users-tab" class="tab-content active">
+            <div class="users-controls">
+                <button onclick="showAddUserForm()">Add User</button>
+            </div>
+            
+            <div id="add-user-form" class="add-user-section" style="display: none;">
+                <h3>Add New User</h3>
+                <div class="form-row">
+                    <input type="text" id="new-first-name" placeholder="First Name" required>
+                    <input type="text" id="new-last-name" placeholder="Last Name" required>
+                </div>
+                <div class="form-row">
+                    <input type="text" id="new-employee-id" placeholder="Employee ID" required>
+                    <input type="number" id="new-table-number" placeholder="Table Number" required min="1">
+                </div>
+                <div class="form-buttons">
+                    <button onclick="createUser()">Create User</button>
+                    <button onclick="hideAddUserForm()" style="background-color: #6c757d;">Cancel</button>
+                </div>
+                <div id="add-user-message" class="message"></div>
+            </div>
+            
             <div id="users-loading" class="loading">Loading...</div>
             <table id="users-table" style="display: none;">
                 <thead>
@@ -64,6 +91,15 @@
                 <tbody id="users-body">
                 </tbody>
             </table>
+        </div>
+        
+        <div id="tables-tab" class="tab-content">
+            <div id="tables-loading" class="loading">Loading...</div>
+            <div id="tables-container" style="display: none;">
+                <div id="tables-grid" class="tables-grid">
+                    <!-- Tables will be populated here -->
+                </div>
+            </div>
         </div>
     </div>
 

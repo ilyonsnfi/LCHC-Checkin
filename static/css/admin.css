@@ -61,8 +61,20 @@ button:hover {
     margin-bottom: 20px;
 }
 
-.tab-container {
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
+}
+
+.tab-container {
+    display: flex;
+}
+
+.global-search {
+    display: flex;
+    align-items: center;
 }
 
 .tab-button {
@@ -198,4 +210,111 @@ tr:hover {
     text-align: center;
     padding: 20px;
     color: #666;
+}
+
+.users-controls {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.add-user-section {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.form-row input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#search-input {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.table-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s ease;
+}
+
+.table-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 10px;
+}
+
+.table-number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.user-count {
+    background: #007bff;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.table-users {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.table-users li {
+    padding: 5px 0;
+    border-bottom: 1px solid #e9ecef;
+    color: #495057;
+}
+
+.table-users li:last-child {
+    border-bottom: none;
+}
+
+.empty-tables {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 40px;
 }

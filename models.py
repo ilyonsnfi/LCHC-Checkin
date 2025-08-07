@@ -44,3 +44,8 @@ class DeleteResponse(BaseModel):
     success: bool
     deleted: int = 0
     message: Optional[str] = None
+
+class CreateUserResponse(BaseModel):
+    success: bool
+    message: str
+    user: Optional[User] = None

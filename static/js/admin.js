@@ -1,4 +1,4 @@
-let currentTab = 'history';
+let currentTab = 'users';
 
 function switchTab(tab) {
     // Update tab buttons
@@ -11,23 +11,33 @@ function switchTab(tab) {
     
     currentTab = tab;
     
-    // Load data for the active tab
+    // Load data for the active tab with current search query
+    const globalSearchInput = document.getElementById('global-search-input');
+    const searchQuery = globalSearchInput ? globalSearchInput.value.trim() : '';
+    
     if (tab === 'history') {
-        loadHistory();
+        loadHistory(searchQuery);
     } else if (tab === 'users') {
-        loadUsers();
+        loadUsers(searchQuery);
+    } else if (tab === 'tables') {
+        loadTables(searchQuery);
     }
 }
 
 function refreshActiveTab() {
+    const globalSearchInput = document.getElementById('global-search-input');
+    const searchQuery = globalSearchInput ? globalSearchInput.value.trim() : '';
+    
     if (currentTab === 'history') {
-        loadHistory();
+        loadHistory(searchQuery);
     } else if (currentTab === 'users') {
-        loadUsers();
+        loadUsers(searchQuery);
+    } else if (currentTab === 'tables') {
+        loadTables(searchQuery);
     }
 }
 
-async function loadHistory() {
+async function loadHistory(searchQuery = '') {
     const loading = document.getElementById('history-loading');
     const table = document.getElementById('history-table');
     const tbody = document.getElementById('history-body');
@@ -36,7 +46,8 @@ async function loadHistory() {
     table.style.display = 'none';
     
     try {
-        const response = await fetch('/admin/history');
+        const url = searchQuery ? `/admin/history?search=${encodeURIComponent(searchQuery)}` : '/admin/history';
+        const response = await fetch(url);
         const history = await response.json();
         
         tbody.innerHTML = '';
@@ -61,7 +72,7 @@ async function loadHistory() {
     }
 }
 
-async function loadUsers() {
+async function loadUsers(searchQuery = '') {
     const loading = document.getElementById('users-loading');
     const table = document.getElementById('users-table');
     const tbody = document.getElementById('users-body');
@@ -70,7 +81,8 @@ async function loadUsers() {
     table.style.display = 'none';
     
     try {
-        const response = await fetch('/admin/users');
+        const url = searchQuery ? `/admin/users?search=${encodeURIComponent(searchQuery)}` : '/admin/users';
+        const response = await fetch(url);
         const users = await response.json();
         
         tbody.innerHTML = '';
@@ -90,6 +102,54 @@ async function loadUsers() {
         
     } catch (error) {
         loading.innerHTML = 'Error loading users';
+        console.error('Error:', error);
+    }
+}
+
+async function loadTables(searchQuery = '') {
+    const loading = document.getElementById('tables-loading');
+    const container = document.getElementById('tables-container');
+    const grid = document.getElementById('tables-grid');
+    
+    loading.style.display = 'block';
+    container.style.display = 'none';
+    
+    try {
+        const url = searchQuery ? `/admin/tables?search=${encodeURIComponent(searchQuery)}` : '/admin/tables';
+        const response = await fetch(url);
+        const tables = await response.json();
+        
+        grid.innerHTML = '';
+        
+        if (tables.length === 0) {
+            const emptyMsg = searchQuery ? `No tables found matching "${searchQuery}"` : 'No tables with users found';
+            grid.innerHTML = `<div class="empty-tables">${emptyMsg}</div>`;
+        } else {
+            tables.forEach(table => {
+                const tableCard = document.createElement('div');
+                tableCard.className = 'table-card';
+                
+                const usersList = table.users.map(user => `<li>${user}</li>`).join('');
+                
+                tableCard.innerHTML = `
+                    <div class="table-header">
+                        <div class="table-number">Table ${table.table_number}</div>
+                        <div class="user-count">${table.user_count} user${table.user_count === 1 ? '' : 's'}</div>
+                    </div>
+                    <ul class="table-users">
+                        ${usersList}
+                    </ul>
+                `;
+                
+                grid.appendChild(tableCard);
+            });
+        }
+        
+        loading.style.display = 'none';
+        container.style.display = 'block';
+        
+    } catch (error) {
+        loading.innerHTML = 'Error loading tables';
         console.error('Error:', error);
     }
 }
@@ -222,6 +282,80 @@ window.onclick = function(event) {
     }
 }
 
+function showAddUserForm() {
+    document.getElementById('add-user-form').style.display = 'block';
+    document.getElementById('new-first-name').focus();
+}
+
+function hideAddUserForm() {
+    document.getElementById('add-user-form').style.display = 'none';
+    // Clear form fields
+    document.getElementById('new-first-name').value = '';
+    document.getElementById('new-last-name').value = '';
+    document.getElementById('new-employee-id').value = '';
+    document.getElementById('new-table-number').value = '';
+    // Clear messages
+    document.getElementById('add-user-message').style.display = 'none';
+}
+
+async function createUser() {
+    const firstName = document.getElementById('new-first-name').value.trim();
+    const lastName = document.getElementById('new-last-name').value.trim();
+    const employeeId = document.getElementById('new-employee-id').value.trim();
+    const tableNumber = parseInt(document.getElementById('new-table-number').value);
+    const message = document.getElementById('add-user-message');
+    
+    // Validation
+    if (!firstName || !lastName || !employeeId || !tableNumber) {
+        showAddUserMessage('Please fill in all fields', 'error');
+        return;
+    }
+    
+    if (tableNumber < 1) {
+        showAddUserMessage('Table number must be greater than 0', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                first_name: firstName,
+                last_name: lastName,
+                employee_id: employeeId,
+                table_number: tableNumber
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAddUserMessage(result.message, 'success');
+            // Clear form after successful creation
+            setTimeout(() => {
+                hideAddUserForm();
+                loadUsers(); // Refresh the users list
+            }, 1500);
+        } else {
+            showAddUserMessage(result.message, 'error');
+        }
+        
+    } catch (error) {
+        showAddUserMessage('Error creating user', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function showAddUserMessage(text, type) {
+    const message = document.getElementById('add-user-message');
+    message.textContent = text;
+    message.className = `message ${type}`;
+    message.style.display = 'block';
+}
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Allow Enter key to trigger confirmation in the input field
@@ -231,5 +365,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    loadHistory();
+    // Add global search functionality
+    const globalSearchInput = document.getElementById('global-search-input');
+    let searchTimeout;
+    
+    globalSearchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const query = globalSearchInput.value.trim();
+            // Apply search to the currently active tab
+            if (currentTab === 'history') {
+                loadHistory(query);
+            } else if (currentTab === 'users') {
+                loadUsers(query);
+            } else if (currentTab === 'tables') {
+                loadTables(query);
+            }
+        }, 300); // Debounce search
+    });
+    
+    // Load the default tab (users)
+    loadUsers();
 });

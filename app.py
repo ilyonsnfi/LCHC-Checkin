@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 import io
 from datetime import datetime
 from openpyxl import load_workbook
-from models import CheckinResponse, ImportResponse, User, DeleteResponse
-from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users
+from models import CheckinResponse, ImportResponse, User, DeleteResponse, CreateUserResponse
+from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -48,36 +48,80 @@ async def admin_page(request: Request):
     return templates.TemplateResponse("admin.html", {"request": request})
 
 @app.get("/admin/history")
-async def get_history():
-    return get_checkin_history()
+async def get_history(search: str = ""):
+    return get_checkin_history(search)
 
 @app.get("/admin/users")
-async def get_users():
+async def get_users(search: str = ""):
+    if search:
+        return search_users(search)
     return get_all_users()
+
+@app.get("/admin/tables")
+async def get_tables(search: str = ""):
+    return get_tables_with_users(search)
 
 @app.get("/admin/export")
 async def export_xlsx():
     from openpyxl import Workbook
     
-    history = get_checkin_history()
+    export_data = get_export_data()
     
     # Create a new workbook and worksheet
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.title = "Checkin History"
+    worksheet.title = "Checkin Data"
     
-    # Add headers
-    headers = ["First Name", "Last Name", "Employee ID", "Table Number", "Checkin Time"]
-    for col, header in enumerate(headers, 1):
-        worksheet.cell(row=1, column=col, value=header)
+    current_row = 1
     
-    # Add data
-    for row_idx, record in enumerate(history, 2):
-        worksheet.cell(row=row_idx, column=1, value=record.first_name)
-        worksheet.cell(row=row_idx, column=2, value=record.last_name)
-        worksheet.cell(row=row_idx, column=3, value=record.employee_id)
-        worksheet.cell(row=row_idx, column=4, value=record.table_number)
-        worksheet.cell(row=row_idx, column=5, value=record.checkin_time)
+    # Section 1: Users with checkins
+    if export_data['with_checkins']:
+        # Add section header
+        worksheet.cell(row=current_row, column=1, value="USERS WITH CHECKINS")
+        worksheet.cell(row=current_row, column=1).font = worksheet.cell(row=current_row, column=1).font.copy(bold=True)
+        current_row += 1
+        
+        # Add headers for checkins section
+        headers = ["First Name", "Last Name", "Employee ID", "Table Number", "Checkin Time"]
+        for col, header in enumerate(headers, 1):
+            worksheet.cell(row=current_row, column=col, value=header)
+            worksheet.cell(row=current_row, column=col).font = worksheet.cell(row=current_row, column=col).font.copy(bold=True)
+        current_row += 1
+        
+        # Add checkin data
+        for record in export_data['with_checkins']:
+            worksheet.cell(row=current_row, column=1, value=record.first_name)
+            worksheet.cell(row=current_row, column=2, value=record.last_name)
+            worksheet.cell(row=current_row, column=3, value=record.employee_id)
+            worksheet.cell(row=current_row, column=4, value=record.table_number)
+            worksheet.cell(row=current_row, column=5, value=record.checkin_time)
+            current_row += 1
+    
+    # Section 2: Users without checkins
+    if export_data['without_checkins']:
+        # Add spacing between sections
+        current_row += 1
+        
+        # Add section header
+        worksheet.cell(row=current_row, column=1, value="USERS WITHOUT CHECKINS")
+        worksheet.cell(row=current_row, column=1).font = worksheet.cell(row=current_row, column=1).font.copy(bold=True)
+        current_row += 1
+        
+        # Add headers for no-checkins section
+        headers = ["First Name", "Last Name", "Employee ID", "Table Number", "Status"]
+        for col, header in enumerate(headers, 1):
+            worksheet.cell(row=current_row, column=col, value=header)
+            worksheet.cell(row=current_row, column=col).font = worksheet.cell(row=current_row, column=col).font.copy(bold=True)
+        current_row += 1
+        
+        # Add users without checkins
+        for user in export_data['without_checkins']:
+            worksheet.cell(row=current_row, column=1, value=user.first_name)
+            worksheet.cell(row=current_row, column=2, value=user.last_name)
+            worksheet.cell(row=current_row, column=3, value=user.employee_id)
+            worksheet.cell(row=current_row, column=4, value=user.table_number)
+            worksheet.cell(row=current_row, column=5, value="No Checkin")
+            current_row += 1
     
     # Save to BytesIO
     output = io.BytesIO()
@@ -90,7 +134,7 @@ async def export_xlsx():
     return StreamingResponse(
         iter_xlsx(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=checkin_history.xlsx"}
+        headers={"Content-Disposition": "attachment; filename=checkin_data.xlsx"}
     )
 
 @app.post("/admin/import", response_model=ImportResponse)
@@ -211,6 +255,27 @@ async def delete_all_users_endpoint():
         return DeleteResponse(
             success=False,
             message=f"Error deleting users: {str(e)}"
+        )
+
+@app.post("/admin/users", response_model=CreateUserResponse)
+async def create_user_endpoint(user: User):
+    try:
+        success, message = create_single_user(user)
+        if success:
+            return CreateUserResponse(
+                success=True,
+                message=message,
+                user=user
+            )
+        else:
+            return CreateUserResponse(
+                success=False,
+                message=message
+            )
+    except Exception as e:
+        return CreateUserResponse(
+            success=False,
+            message=f"Error creating user: {str(e)}"
         )
 
 if __name__ == "__main__":
