@@ -71,8 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 playSound('error-sound');
             }
             
-            result.style.display = 'block';
-            
             // Clear any existing timeout
             if (hideTimeout) {
                 clearTimeout(hideTimeout);
@@ -80,14 +78,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Set a new timeout
             hideTimeout = setTimeout(() => {
-                result.style.display = 'none';
+                result.classList.remove('success', 'error');
                 hideTimeout = null; // Clear the reference
             }, 5000);
             
         } catch (error) {
             result.className = 'error';
             result.innerHTML = 'Error processing checkin';
-            result.style.display = 'block';
             // Play error sound for network/processing errors
             playSound('error-sound');
             
@@ -98,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Set a new timeout for error case too
             hideTimeout = setTimeout(() => {
-                result.style.display = 'none';
+                result.classList.remove('success', 'error');
                 hideTimeout = null; // Clear the reference
             }, 5000);
         }

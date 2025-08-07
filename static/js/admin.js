@@ -280,7 +280,7 @@ async function confirmDeleteUsers() {
         const result = await response.json();
         
         if (result.success) {
-            alert(`Successfully deleted ${result.deleted} users`);
+            // Successfully deleted users
             closeDeleteModal();
             // Refresh users tab
             loadUsers();
@@ -322,7 +322,7 @@ async function confirmClearHistory() {
         const result = await response.json();
         
         if (result.success) {
-            alert(`Successfully cleared ${result.deleted} checkin records`);
+            // Successfully cleared checkin records
             closeClearHistoryModal();
             // Refresh history tab if it's active
             if (currentTab === 'history') {
