@@ -1,6 +1,7 @@
 :root {
-    --container-color: #007bff;
-    --text-color: #f5f5f5;
+    --text-color: #333333;
+    --foreground-color: #ffffff;
+    --background-color: #f5f5f5;
     --background-image: none;
 }
 
@@ -9,7 +10,7 @@ body {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
-    background-color: #f5f5f5;
+    background-color: var(--background-color);
     background-image: var(--background-image);
     background-size: cover;
     background-position: center;
@@ -17,7 +18,7 @@ body {
 }
 
 .container {
-    background-color: var(--container-color);
+    background-color: var(--foreground-color);
     border: 2px solid var(--text-color);
     padding: 40px;
     border-radius: 10px;
@@ -53,7 +54,7 @@ body {
 }
 
 .success {
-    background-color: rgba(0, 123, 255, 0.1);
+    background-color: var(--background-color);
     border: 2px solid var(--text-color);
     color: var(--text-color);
 }

@@ -61,7 +61,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 result.innerHTML = `
                     <div class="user-info">Welcome, ${data.name}!</div>
                     <div class="table-info">Table ${data.table_number}</div>
-                    <div>Checked in at ${data.time}</div>
                 `;
                 // Play success sound
                 playSound('success-sound');

@@ -8,6 +8,8 @@ class User(BaseModel):
     first_name: str = Field(..., min_length=1, description="First name")
     last_name: str = Field(..., min_length=1, description="Last name")
     table_number: int = Field(..., gt=0, description="Table number")
+    last_checkin: Optional[str] = None
+    is_checked_in: bool = False
 
 class UserCreate(BaseModel):
     employee_id: str = Field(..., description="Employee badge ID")
@@ -53,15 +55,17 @@ class CreateUserResponse(BaseModel):
 class Settings(BaseModel):
     welcome_banner: str
     secondary_banner: str
+    text_color: str
+    foreground_color: str
     background_color: str
-    highlight_color: str
     background_image: str
 
 class SettingsUpdate(BaseModel):
     welcome_banner: Optional[str] = None
     secondary_banner: Optional[str] = None
+    text_color: Optional[str] = None
+    foreground_color: Optional[str] = None
     background_color: Optional[str] = None
-    highlight_color: Optional[str] = None
     background_image: Optional[str] = None
 
 class SettingsResponse(BaseModel):

@@ -7,7 +7,7 @@ import io
 from datetime import datetime
 from openpyxl import load_workbook
 from models import CheckinResponse, ImportResponse, User, DeleteResponse, CreateUserResponse, Settings, SettingsUpdate, SettingsResponse
-from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data, get_settings, update_settings
+from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data, clear_checkin_history, checkout_user, get_settings, update_settings
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -29,7 +29,8 @@ async def checkin_page(request: Request):
 @app.get("/preview", response_class=HTMLResponse)
 async def checkin_preview(request: Request):
     settings = get_settings()
-    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings, "preview_mode": True})
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings, "current_time": current_time, "preview_mode": True, "show_admin_link": False})
 
 @app.post("/checkin", response_model=CheckinResponse)
 async def checkin(badge_id: str = Form(...)):
@@ -350,6 +351,120 @@ async def upload_background(file: UploadFile = File(...)):
     
     except Exception as e:
         return {"success": False, "message": f"Error uploading image: {str(e)}"}
+
+@app.delete("/admin/remove-background")
+async def remove_background():
+    try:
+        # Get current background image path
+        settings = get_settings()
+        current_bg = settings.get('background_image', '')
+        
+        # Remove from settings first
+        success = update_settings({"background_image": ""})
+        
+        if not success:
+            return {"success": False, "message": "Failed to update settings"}
+        
+        # Delete the physical file if it exists and is in uploads folder
+        if current_bg and current_bg.startswith('/static/uploads/'):
+            import os
+            # Convert web path to file path
+            file_path = current_bg.replace('/static/', 'static/')
+            
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError as e:
+                    # File deletion failed but settings were updated
+                    return {"success": True, "message": "Background removed but file deletion failed", "warning": str(e)}
+        
+        return {"success": True, "message": "Background image removed successfully"}
+    
+    except Exception as e:
+        return {"success": False, "message": f"Error removing background: {str(e)}"}
+
+@app.delete("/admin/clear-history")
+async def clear_checkin_history_endpoint():
+    try:
+        deleted_count = clear_checkin_history()
+        return {
+            "success": True,
+            "deleted": deleted_count,
+            "message": f"Successfully cleared {deleted_count} checkin records"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error clearing checkin history: {str(e)}"
+        }
+
+@app.post("/admin/checkin/{employee_id}")
+async def manual_checkin(employee_id: str):
+    try:
+        user = get_user_by_employee_id(employee_id)
+        
+        if not user:
+            return {
+                "success": False,
+                "message": "User not found"
+            }
+        
+        success = create_checkin(employee_id)
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"Successfully checked in {user.first_name} {user.last_name}",
+                "user": {
+                    "name": f"{user.first_name} {user.last_name}",
+                    "employee_id": employee_id,
+                    "table_number": user.table_number
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Checkin failed"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error during manual checkin: {str(e)}"
+        }
+
+@app.delete("/admin/checkout/{employee_id}")
+async def manual_checkout(employee_id: str):
+    try:
+        user = get_user_by_employee_id(employee_id)
+        
+        if not user:
+            return {
+                "success": False,
+                "message": "User not found"
+            }
+        
+        success = checkout_user(employee_id)
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"Successfully checked out {user.first_name} {user.last_name}",
+                "user": {
+                    "name": f"{user.first_name} {user.last_name}",
+                    "employee_id": employee_id,
+                    "table_number": user.table_number
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No checkin record found to remove"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error during checkout: {str(e)}"
+        }
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,23 +1,33 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RFID Checkin Station</title>
+{% extends "base.html" %}
+
+{% block head %}
     <link rel="stylesheet" href="/static/css/checkin.css">
-</head>
-<body data-container-color="{{ settings.highlight_color }}" 
-      data-text-color="{{ settings.background_color }}" 
-      data-background-image="{{ settings.background_image }}">
-    <a href="/admin" class="admin-link">Admin</a>
-    
+{% endblock %}
+
+{% block body_attrs %} data-text-color="{{ settings.text_color }}" 
+      data-foreground-color="{{ settings.foreground_color }}" 
+      data-background-color="{{ settings.background_color }}"
+      data-background-image="{{ settings.background_image }}"{% endblock %}
+
+{% block content %}
     <div class="container">
         <h1>{{ settings.welcome_banner }}</h1>
         <p>{{ settings.secondary_banner }}</p>
         
+        {% if preview_mode and current_time %}
+        <!-- Show fake success message for preview -->
+        <div id="result" class="success" style="display: block;">
+            <div class="user-info">Welcome, John Doe!</div>
+            <div class="table-info">Table 5</div>
+        </div>
+        {% else %}
+        <!-- Normal result div for real checkin -->
         <div id="result"></div>
+        {% endif %}
     </div>
+{% endblock %}
 
+{% block scripts %}
     <script src="/static/js/settings.js"></script>
 
     {% if not preview_mode %}
@@ -31,5 +41,4 @@
 
     <script src="/static/js/checkin.js"></script>
     {% endif %}
-</body>
-</html>
+{% endblock %}

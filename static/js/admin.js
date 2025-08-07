@@ -93,10 +93,26 @@ async function loadUsers(searchQuery = '') {
         
         users.forEach(user => {
             const row = document.createElement('tr');
+            const statusClass = user.is_checked_in ? 'checked-in' : 'not-checked-in';
+            const statusText = user.is_checked_in ? 'Checked In' : 'Not Checked In';
+            const lastCheckin = user.last_checkin ? new Date(user.last_checkin).toLocaleString() : 'Never';
+            
+            const buttonText = user.is_checked_in ? 'Check Out' : 'Check In';
+            const buttonClass = user.is_checked_in ? 'checkout-button' : 'checkin-button';
+            const buttonAction = user.is_checked_in ? 'manualCheckout' : 'manualCheckin';
+            
             row.innerHTML = `
+                <td>
+                    <button onclick="${buttonAction}('${user.employee_id}', this)" 
+                            class="${buttonClass}">
+                        ${buttonText}
+                    </button>
+                </td>
                 <td>${user.first_name} ${user.last_name}</td>
                 <td>${user.employee_id}</td>
                 <td>${user.table_number}</td>
+                <td><span class="status ${statusClass}">${statusText}</span></td>
+                <td>${lastCheckin}</td>
             `;
             tbody.appendChild(row);
         });
@@ -278,11 +294,59 @@ async function confirmDeleteUsers() {
     }
 }
 
+function showClearHistoryConfirmation() {
+    document.getElementById('clearHistoryModal').style.display = 'block';
+    document.getElementById('confirmHistoryInput').value = '';
+    document.getElementById('confirmHistoryInput').focus();
+}
+
+function closeClearHistoryModal() {
+    document.getElementById('clearHistoryModal').style.display = 'none';
+}
+
+async function confirmClearHistory() {
+    const confirmInput = document.getElementById('confirmHistoryInput');
+    const expectedText = 'CLEAR HISTORY';
+    
+    if (confirmInput.value !== expectedText) {
+        alert(`Please type "${expectedText}" exactly to confirm.`);
+        confirmInput.focus();
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/clear-history', {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`Successfully cleared ${result.deleted} checkin records`);
+            closeClearHistoryModal();
+            // Refresh history tab if it's active
+            if (currentTab === 'history') {
+                loadHistory();
+            }
+        } else {
+            alert(result.message || 'Failed to clear checkin history');
+        }
+        
+    } catch (error) {
+        alert('Error clearing checkin history');
+        console.error('Error:', error);
+    }
+}
+
 // Close modal when clicking outside of it
 window.onclick = function(event) {
-    const modal = document.getElementById('deleteModal');
-    if (event.target === modal) {
+    const deleteModal = document.getElementById('deleteModal');
+    const clearHistoryModal = document.getElementById('clearHistoryModal');
+    
+    if (event.target === deleteModal) {
         closeDeleteModal();
+    } else if (event.target === clearHistoryModal) {
+        closeClearHistoryModal();
     }
 }
 
@@ -362,10 +426,16 @@ function showAddUserMessage(text, type) {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Allow Enter key to trigger confirmation in the input field
+    // Allow Enter key to trigger confirmation in the input fields
     document.getElementById('confirmInput').addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
             confirmDeleteUsers();
+        }
+    });
+    
+    document.getElementById('confirmHistoryInput').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            confirmClearHistory();
         }
     });
     
@@ -406,8 +476,9 @@ async function loadSettings() {
         // Populate form fields
         document.getElementById('welcome-banner').value = settings.welcome_banner;
         document.getElementById('secondary-banner').value = settings.secondary_banner;
+        document.getElementById('text-color').value = settings.text_color;
+        document.getElementById('foreground-color').value = settings.foreground_color;
         document.getElementById('background-color').value = settings.background_color;
-        document.getElementById('highlight-color').value = settings.highlight_color;
         
         // Show current background image
         const currentBg = document.getElementById('current-background');
@@ -425,6 +496,9 @@ async function loadSettings() {
         
         // No need to initialize preview - iframe loads automatically
         
+        // Add real-time auto-apply listeners
+        addAutoApplyListeners();
+        
     } catch (error) {
         loading.innerHTML = 'Error loading settings';
         console.error('Error:', error);
@@ -434,8 +508,9 @@ async function loadSettings() {
 async function saveSettings() {
     const welcomeBanner = document.getElementById('welcome-banner').value.trim();
     const secondaryBanner = document.getElementById('secondary-banner').value.trim();
+    const textColor = document.getElementById('text-color').value;
+    const foregroundColor = document.getElementById('foreground-color').value;
     const backgroundColor = document.getElementById('background-color').value;
-    const highlightColor = document.getElementById('highlight-color').value;
     
     if (!welcomeBanner || !secondaryBanner) {
         showSettingsMessage('Please fill in all text fields', 'error');
@@ -451,8 +526,9 @@ async function saveSettings() {
             body: JSON.stringify({
                 welcome_banner: welcomeBanner,
                 secondary_banner: secondaryBanner,
-                background_color: backgroundColor,
-                highlight_color: highlightColor
+                text_color: textColor,
+                foreground_color: foregroundColor,
+                background_color: backgroundColor
             })
         });
         
@@ -485,8 +561,9 @@ async function resetSettings() {
             body: JSON.stringify({
                 welcome_banner: 'RFID Checkin Station',
                 secondary_banner: 'Scan your badge to check in',
+                text_color: '#333333',
+                foreground_color: '#ffffff',
                 background_color: '#f5f5f5',
-                highlight_color: '#007bff',
                 background_image: ''
             })
         });
@@ -564,24 +641,24 @@ async function uploadBackgroundImage() {
 }
 
 async function confirmRemoveBackground() {
-    const confirmed = confirm('Are you sure you want to remove the background image? This cannot be undone.');
+    const confirmed = confirm('Are you sure you want to remove the background image? The file will be permanently deleted.');
     if (!confirmed) return;
     
     try {
-        const response = await fetch('/admin/settings', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                background_image: ''
-            })
+        const response = await fetch('/admin/remove-background', {
+            method: 'DELETE'
         });
         
         const result = await response.json();
         
         if (result.success) {
-            showBackgroundMessage('Background image removed successfully', 'success');
+            showBackgroundMessage(result.message, 'success');
+            // Show warning if file deletion failed but settings were updated
+            if (result.warning) {
+                setTimeout(() => {
+                    showBackgroundMessage(`Warning: ${result.warning}`, 'error');
+                }, 3000);
+            }
             // Update display
             const currentBg = document.getElementById('current-background');
             const removeSection = document.getElementById('remove-background-section');
@@ -628,5 +705,170 @@ function reloadPreview() {
         const baseUrl = '/preview';
         const timestamp = new Date().getTime();
         iframe.src = `${baseUrl}?t=${timestamp}`;
+    }
+}
+
+function addAutoApplyListeners() {
+    const welcomeInput = document.getElementById('welcome-banner');
+    const secondaryInput = document.getElementById('secondary-banner');
+    const textColorInput = document.getElementById('text-color');
+    const foregroundColorInput = document.getElementById('foreground-color');
+    const backgroundColorInput = document.getElementById('background-color');
+    
+    let autoSaveTimeout = null;
+    
+    function autoSaveSettings(immediate = false) {
+        // Clear existing timeout
+        if (autoSaveTimeout) {
+            clearTimeout(autoSaveTimeout);
+        }
+        
+        const delay = immediate ? 0 : 200;
+        
+        // Set new timeout to save after user stops typing/changing
+        autoSaveTimeout = setTimeout(async () => {
+            const welcomeBanner = welcomeInput.value.trim();
+            const secondaryBanner = secondaryInput.value.trim();
+            const textColor = textColorInput.value;
+            const foregroundColor = foregroundColorInput.value;
+            const backgroundColor = backgroundColorInput.value;
+            
+            // Skip if text fields are empty
+            if (!welcomeBanner || !secondaryBanner) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/settings', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        welcome_banner: welcomeBanner,
+                        secondary_banner: secondaryBanner,
+                        text_color: textColor,
+                        foreground_color: foregroundColor,
+                        background_color: backgroundColor
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Reload preview to show changes
+                    reloadPreview();
+                    // Show brief success indicator only for manual saves
+                    if (!immediate) {
+                        showAutoSaveIndicator();
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Auto-save error:', error);
+            }
+        }, delay);
+    }
+    
+    // Immediate save function for colors (no debounce needed)
+    function immediateColorSave() {
+        autoSaveSettings(true);
+    }
+    
+    // Add event listeners
+    if (welcomeInput) welcomeInput.addEventListener('input', autoSaveSettings);
+    if (secondaryInput) secondaryInput.addEventListener('input', autoSaveSettings);
+    
+    // Colors update immediately
+    if (textColorInput) textColorInput.addEventListener('input', immediateColorSave);
+    if (foregroundColorInput) foregroundColorInput.addEventListener('input', immediateColorSave);
+    if (backgroundColorInput) backgroundColorInput.addEventListener('input', immediateColorSave);
+}
+
+function showAutoSaveIndicator() {
+    // Create or update auto-save indicator
+    let indicator = document.getElementById('auto-save-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'auto-save-indicator';
+        indicator.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        indicator.textContent = '✓ Auto-saved';
+        document.body.appendChild(indicator);
+    }
+    
+    // Show and hide the indicator
+    indicator.style.opacity = '1';
+    setTimeout(() => {
+        indicator.style.opacity = '0';
+    }, 2000);
+}
+
+async function manualCheckin(employeeId, buttonElement) {
+    const originalText = buttonElement.textContent;
+    buttonElement.textContent = 'Checking in...';
+    buttonElement.disabled = true;
+    
+    try {
+        const response = await fetch(`/admin/checkin/${employeeId}`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Refresh users list to show updated status
+            loadUsers();
+        } else {
+            alert(result.message || 'Failed to check in user');
+            buttonElement.textContent = originalText;
+            buttonElement.disabled = false;
+        }
+        
+    } catch (error) {
+        alert('Error checking in user');
+        console.error('Error:', error);
+        buttonElement.textContent = originalText;
+        buttonElement.disabled = false;
+    }
+}
+
+async function manualCheckout(employeeId, buttonElement) {
+    const originalText = buttonElement.textContent;
+    buttonElement.textContent = 'Checking out...';
+    buttonElement.disabled = true;
+    
+    try {
+        const response = await fetch(`/admin/checkout/${employeeId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Refresh users list to show updated status
+            loadUsers();
+        } else {
+            alert(result.message || 'Failed to check out user');
+            buttonElement.textContent = originalText;
+            buttonElement.disabled = false;
+        }
+        
+    } catch (error) {
+        alert('Error checking out user');
+        console.error('Error:', error);
+        buttonElement.textContent = originalText;
+        buttonElement.disabled = false;
     }
 }

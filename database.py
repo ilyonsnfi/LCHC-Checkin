@@ -43,8 +43,9 @@ def init_db():
     # Initialize default settings if they don't exist
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("welcome_banner", "RFID Checkin Station"))
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("secondary_banner", "Scan your badge to check in"))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("text_color", "#333333"))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("foreground_color", "#ffffff"))
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("background_color", "#f5f5f5"))
-    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("highlight_color", "#007bff"))
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("background_image", ""))
     
     conn.commit()
@@ -156,7 +157,15 @@ def create_users_batch(users: List[User]) -> tuple[int, List[str]]:
 def get_all_users() -> List[User]:
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users ORDER BY first_name, last_name")
+    cursor.execute("""
+        SELECT u.*, 
+               MAX(c.checkin_time) as last_checkin,
+               CASE WHEN MAX(c.checkin_time) IS NOT NULL THEN 1 ELSE 0 END as is_checked_in
+        FROM users u
+        LEFT JOIN checkins c ON u.employee_id = c.employee_id
+        GROUP BY u.id, u.employee_id, u.first_name, u.last_name, u.table_number
+        ORDER BY u.first_name, u.last_name
+    """)
     rows = cursor.fetchall()
     conn.close()
     
@@ -166,7 +175,9 @@ def get_all_users() -> List[User]:
             employee_id=row["employee_id"],
             first_name=row["first_name"],
             last_name=row["last_name"],
-            table_number=row["table_number"]
+            table_number=row["table_number"],
+            last_checkin=row["last_checkin"],
+            is_checked_in=bool(row["is_checked_in"])
         )
         for row in rows
     ]
@@ -219,12 +230,17 @@ def search_users(query: str) -> List[User]:
     # Search across all fields
     search_pattern = f"%{query}%"
     cursor.execute("""
-        SELECT * FROM users 
-        WHERE first_name LIKE ? COLLATE NOCASE
-        OR last_name LIKE ? COLLATE NOCASE
-        OR employee_id LIKE ? COLLATE NOCASE
-        OR CAST(table_number AS TEXT) LIKE ?
-        ORDER BY first_name, last_name
+        SELECT u.*, 
+               MAX(c.checkin_time) as last_checkin,
+               CASE WHEN MAX(c.checkin_time) IS NOT NULL THEN 1 ELSE 0 END as is_checked_in
+        FROM users u
+        LEFT JOIN checkins c ON u.employee_id = c.employee_id
+        WHERE u.first_name LIKE ? COLLATE NOCASE
+        OR u.last_name LIKE ? COLLATE NOCASE
+        OR u.employee_id LIKE ? COLLATE NOCASE
+        OR CAST(u.table_number AS TEXT) LIKE ?
+        GROUP BY u.id, u.employee_id, u.first_name, u.last_name, u.table_number
+        ORDER BY u.first_name, u.last_name
     """, (search_pattern, search_pattern, search_pattern, search_pattern))
     
     rows = cursor.fetchall()
@@ -236,7 +252,9 @@ def search_users(query: str) -> List[User]:
             employee_id=row["employee_id"],
             first_name=row["first_name"],
             last_name=row["last_name"],
-            table_number=row["table_number"]
+            table_number=row["table_number"],
+            last_checkin=row["last_checkin"],
+            is_checked_in=bool(row["is_checked_in"])
         )
         for row in rows
     ]
@@ -328,6 +346,48 @@ def get_export_data() -> dict:
             for row in users_without_checkins
         ]
     }
+
+def clear_checkin_history() -> int:
+    """Delete all checkin records, returns count of deleted records"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Get count before deletion
+        cursor.execute("SELECT COUNT(*) FROM checkins")
+        count = cursor.fetchone()[0]
+        
+        # Delete all checkin records
+        cursor.execute("DELETE FROM checkins")
+        conn.commit()
+        conn.close()
+        return count
+    except sqlite3.Error:
+        conn.close()
+        return 0
+
+def checkout_user(employee_id: str) -> bool:
+    """Remove the most recent checkin record for a user"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Delete the most recent checkin for this user
+        cursor.execute("""
+            DELETE FROM checkins 
+            WHERE employee_id = ? 
+            AND checkin_time = (
+                SELECT MAX(checkin_time) 
+                FROM checkins 
+                WHERE employee_id = ?
+            )
+        """, (employee_id, employee_id))
+        
+        rows_affected = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return rows_affected > 0
+    except sqlite3.Error:
+        conn.close()
+        return False
 
 def get_settings() -> dict:
     """Get all settings as a dictionary"""

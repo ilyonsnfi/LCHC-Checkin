@@ -16,6 +16,7 @@
             <button onclick="refreshActiveTab()">Refresh</button>
             <button onclick="exportExcel()">Export Excel</button>
             <button class="danger-button" onclick="showDeleteConfirmation()">Delete All Users</button>
+            <button class="danger-button" onclick="showClearHistoryConfirmation()">Clear Checkin History</button>
         </div>
     </div>
 
@@ -84,9 +85,12 @@
             <table id="users-table" style="display: none;">
                 <thead>
                     <tr>
+                        <th>Actions</th>
                         <th>Name</th>
                         <th>Employee ID</th>
                         <th>Table Number</th>
+                        <th>Status</th>
+                        <th>Last Checkin</th>
                     </tr>
                 </thead>
                 <tbody id="users-body">
@@ -125,12 +129,16 @@
                 <div class="settings-section">
                     <h4>Colors</h4>
                     <div class="form-row">
-                        <label for="background-color">Text Color:</label>
-                        <input type="color" id="background-color">
+                        <label for="text-color">Text Color:</label>
+                        <input type="color" id="text-color">
                     </div>
                     <div class="form-row">
-                        <label for="highlight-color">Container Background:</label>
-                        <input type="color" id="highlight-color">
+                        <label for="foreground-color">Container Background:</label>
+                        <input type="color" id="foreground-color">
+                    </div>
+                    <div class="form-row">
+                        <label for="background-color">Page Background:</label>
+                        <input type="color" id="background-color">
                     </div>
                 </div>
                 
@@ -148,7 +156,6 @@
                 </div>
                 
                 <div class="settings-buttons">
-                    <button onclick="saveSettings()">Save Settings</button>
                     <button onclick="resetSettings()" style="background-color: #6c757d;">Reset to Defaults</button>
                 </div>
                         
@@ -157,14 +164,14 @@
                     
                     <div style="flex: 1;">
                         <h3>Live Preview</h3>
-                        <iframe id="checkin-preview" src="/preview" style="border: 2px solid #ddd; border-radius: 10px; width: 100%; height: 500px; background: white;" sandbox="allow-same-origin"></iframe>
+                        <iframe id="checkin-preview" src="/preview" style="border: 2px solid #ddd; border-radius: 10px; width: 100%; height: 500px; background: white;" sandbox="allow-same-origin allow-scripts"></iframe>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
+    <!-- Delete Users Confirmation Modal -->
     <div id="deleteModal" class="modal">
         <div class="modal-content">
             <h3 style="color: #dc3545;">⚠️ Delete All Users</h3>
@@ -175,6 +182,22 @@
             <div class="modal-buttons">
                 <button onclick="closeDeleteModal()">Cancel</button>
                 <button class="danger-button" onclick="confirmDeleteUsers()">Delete All Users</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear History Confirmation Modal -->
+    <div id="clearHistoryModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #dc3545;">⚠️ Clear Checkin History</h3>
+            <p>This action will permanently delete ALL checkin history records.</p>
+            <p><strong>This cannot be undone!</strong></p>
+            <p>Users will remain in the system, but all checkin timestamps will be lost.</p>
+            <p>Type <strong>CLEAR HISTORY</strong> to confirm:</p>
+            <input type="text" id="confirmHistoryInput" class="confirm-input" placeholder="Type confirmation here">
+            <div class="modal-buttons">
+                <button onclick="closeClearHistoryModal()">Cancel</button>
+                <button class="danger-button" onclick="confirmClearHistory()">Clear History</button>
             </div>
         </div>
     </div>
