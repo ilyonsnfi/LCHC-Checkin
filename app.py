@@ -27,10 +27,10 @@ async def checkin_page(request: Request):
     return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings})
 
 @app.get("/preview", response_class=HTMLResponse)
-async def checkin_preview(request: Request):
+async def checkin_preview(request: Request, demo_result: bool = False):
     settings = get_settings()
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings, "current_time": current_time, "preview_mode": True, "show_admin_link": False, "show_footer": False})
+    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings, "current_time": current_time, "preview_mode": True, "demo_result": demo_result, "show_admin_link": False, "show_footer": False})
 
 @app.post("/checkin", response_model=CheckinResponse)
 async def checkin(badge_id: str = Form(...)):

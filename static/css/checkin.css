@@ -33,23 +33,41 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .container h1 {
     color: var(--text-color);
     margin-top: 0;
     margin-bottom: 1vh;
-    font-size: clamp(50px, min(12vw, 16vh), 200px);
+    font-size: clamp(30px, min(8vw, 8vh), 120px);
     font-weight: bold;
     line-height: 1.1;
+    flex-shrink: 1;
+    overflow: hidden;
+    word-wrap: break-word;
 }
 
-.container p {
+#content-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#content-area p {
     color: var(--text-color);
-    font-size: clamp(28px, min(6vw, 8vh), 100px);
-    margin-bottom: 1vh;
+    font-size: clamp(20px, min(4vw, 5vh), 70px);
+    margin: 0;
     line-height: 1.3;
     font-weight: 500;
+    overflow: hidden;
+    word-wrap: break-word;
+    text-align: center;
 }
 
 #badge-input {
@@ -62,18 +80,19 @@ body {
     text-align: center;
 }
 
-#result {
-    margin-top: auto;
-    margin-bottom: 2vh;
-    padding: 4vh 3vw;
+#content-area #result {
+    padding: 2vh 3vw;
     border-radius: 1.5vw;
-    font-size: clamp(24px, min(4vw, 6vh), 70px);
-    min-height: 25vh;
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
     opacity: 0;
     transition: opacity 0.3s ease;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
-#result.success, #result.error {
+#content-area #result.success, #content-area #result.error {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -102,16 +121,26 @@ body {
 }
 
 .user-info {
-    font-size: clamp(40px, min(7vw, 10vh), 140px);
-    margin: 2vh 0;
+    font-size: clamp(24px, min(5vw, 6vh), 80px);
+    margin: 0.5vh 0;
     font-weight: bold;
+    line-height: 1.2;
+    word-wrap: break-word;
+    text-align: center;
+    flex-shrink: 1;
+    overflow: hidden;
 }
 
 .table-info {
-    font-size: clamp(60px, min(12vw, 16vh), 220px);
+    font-size: clamp(36px, min(7vw, 9vh), 120px);
     font-weight: bold;
-    margin: 1.5vh 0;
+    margin: 0.5vh 0;
+    line-height: 1.1;
     text-shadow: 0.1vw 0.1vw 0.3vw rgba(0,0,0,0.1);
+    word-wrap: break-word;
+    text-align: center;
+    flex-shrink: 1;
+    overflow: hidden;
 }
 
 .admin-link {

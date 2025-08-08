@@ -56,6 +56,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const data = await response.json();
             
+            // Hide secondary banner and show result
+            const secondaryBanner = document.getElementById('secondary-banner');
+            if (secondaryBanner) {
+                secondaryBanner.style.display = 'none';
+            }
+            result.style.display = 'block';
+            
             if (data.success) {
                 result.className = 'success';
                 result.innerHTML = `
@@ -79,10 +86,22 @@ document.addEventListener('DOMContentLoaded', function() {
             // Set a new timeout
             hideTimeout = setTimeout(() => {
                 result.classList.remove('success', 'error');
+                result.style.display = 'none';
+                // Show secondary banner again
+                const secondaryBanner = document.getElementById('secondary-banner');
+                if (secondaryBanner) {
+                    secondaryBanner.style.display = 'block';
+                }
                 hideTimeout = null; // Clear the reference
             }, 5000);
             
         } catch (error) {
+            // Hide secondary banner and show result
+            const secondaryBanner = document.getElementById('secondary-banner');
+            if (secondaryBanner) {
+                secondaryBanner.style.display = 'none';
+            }
+            result.style.display = 'block';
             result.className = 'error';
             result.innerHTML = 'Error processing checkin';
             // Play error sound for network/processing errors
@@ -96,6 +115,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Set a new timeout for error case too
             hideTimeout = setTimeout(() => {
                 result.classList.remove('success', 'error');
+                result.style.display = 'none';
+                // Show secondary banner again
+                const secondaryBanner = document.getElementById('secondary-banner');
+                if (secondaryBanner) {
+                    secondaryBanner.style.display = 'block';
+                }
                 hideTimeout = null; // Clear the reference
             }, 5000);
         }

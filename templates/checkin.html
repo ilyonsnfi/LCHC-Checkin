@@ -12,18 +12,20 @@
 {% block content %}
     <div class="container">
         <h1>{{ settings.welcome_banner }}</h1>
-        <p>{{ settings.secondary_banner }}</p>
         
-        {% if preview_mode and current_time %}
-        <!-- Show fake success message for preview -->
-        <div id="result" class="success" style="display: block;">
-            <div class="user-info">Welcome, John Doe!</div>
-            <div class="table-info">Table 5</div>
+        <div id="content-area">
+            {% if demo_result %}
+            <!-- Show demo result replacing banner -->
+            <div id="result" class="success">
+                <div class="user-info">Welcome, John Doe!</div>
+                <div class="table-info">Table 5</div>
+            </div>
+            {% else %}
+            <!-- Normal mode (including regular preview): show secondary banner, result will replace it -->
+            <p id="secondary-banner">{{ settings.secondary_banner }}</p>
+            <div id="result" style="display: none;"></div>
+            {% endif %}
         </div>
-        {% else %}
-        <!-- Normal result div for real checkin -->
-        <div id="result"></div>
-        {% endif %}
     </div>
 {% endblock %}
 

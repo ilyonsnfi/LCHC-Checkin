@@ -166,6 +166,12 @@
                     
                     <div style="flex: 1;">
                         <h3>Live Preview</h3>
+                        <div style="margin-bottom: 15px;">
+                            <label>
+                                <input type="checkbox" id="show-secondary-banner" checked onchange="toggleSecondaryBanner()">
+                                Show Secondary Banner (uncheck to see result placement)
+                            </label>
+                        </div>
                         <iframe id="checkin-preview" src="/preview" style="border: 2px solid #ddd; border-radius: 10px; width: 100%; height: 50vh; background: white; max-width: 100%;" sandbox="allow-same-origin allow-scripts"></iframe>
                     </div>
                 </div>

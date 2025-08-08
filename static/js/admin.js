@@ -872,3 +872,21 @@ async function manualCheckout(employeeId, buttonElement) {
         buttonElement.disabled = false;
     }
 }
+
+function toggleSecondaryBanner() {
+    const checkbox = document.getElementById('show-secondary-banner');
+    const iframe = document.getElementById('checkin-preview');
+    
+    // Force a complete reload by temporarily changing src to about:blank
+    iframe.src = 'about:blank';
+    
+    setTimeout(() => {
+        if (checkbox.checked) {
+            // Show secondary banner - reload with normal preview
+            iframe.src = '/preview';
+        } else {
+            // Hide secondary banner and show result - reload with demo result
+            iframe.src = '/preview?demo_result=true';
+        }
+    }, 50);
+}
