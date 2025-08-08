@@ -27,10 +27,6 @@ ENV PYTHONUNBUFFERED=1
 # Expose port
 EXPOSE 8000
 
-# Create a non-root user
-RUN useradd -m -u 1000 checkin && chown -R checkin:checkin /app
-USER checkin
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/ || exit 1
