@@ -3,7 +3,8 @@ from datetime import datetime
 from typing import List, Optional
 from models import User, Checkin, CheckinRecord
 
-DATABASE = "checkin.db"
+import os
+DATABASE = os.getenv("DATABASE_PATH", "checkin.db")
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
