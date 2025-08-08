@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 playSound('success-sound');
             } else {
                 result.className = 'error';
-                result.innerHTML = data.message || 'Checkin failed';
+                result.innerHTML = `<div class="error-message">${data.message || 'Checkin failed'}</div>`;
                 // Play error sound
                 playSound('error-sound');
             }
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             result.style.display = 'block';
             result.className = 'error';
-            result.innerHTML = 'Error processing checkin';
+            result.innerHTML = '<div class="error-message">Error processing checkin</div>';
             // Play error sound for network/processing errors
             playSound('error-sound');
             
