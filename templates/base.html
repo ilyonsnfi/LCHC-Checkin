@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}RFID Checkin Station{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/base.css">
     {% block head %}{% endblock %}
 </head>
 <body{% block body_attrs %}{% endblock %}>
@@ -12,6 +13,13 @@
     {% endif %}
     
     {% block content %}{% endblock %}
+
+    {% if show_footer is not defined or show_footer %}
+    <footer class="net-friends-footer">
+        <img src="/static/images/net_friends_icon_rgb_color_360.png" alt="Net Friends" class="footer-logo">
+        <span class="footer-text">Built with love by Net Friends</span>
+    </footer>
+    {% endif %}
 
     {% block scripts %}{% endblock %}
 </body>

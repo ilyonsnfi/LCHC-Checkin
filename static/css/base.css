@@ -1,0 +1,29 @@
+/* Base styles shared across all pages */
+
+/* Net Friends Footer */
+.net-friends-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8vw;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+    margin: 20px 0 10px 0;
+}
+
+.net-friends-footer:hover {
+    opacity: 1;
+}
+
+.footer-logo {
+    height: 2.5vw;
+    width: auto;
+    filter: drop-shadow(0 0.1vw 0.3vw rgba(0,0,0,0.1));
+}
+
+.footer-text {
+    font-size: 1vw;
+    color: white;
+    font-weight: 500;
+    text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black;
+}

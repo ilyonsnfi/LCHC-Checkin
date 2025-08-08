@@ -30,7 +30,7 @@ async def checkin_page(request: Request):
 async def checkin_preview(request: Request):
     settings = get_settings()
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings, "current_time": current_time, "preview_mode": True, "show_admin_link": False})
+    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings, "current_time": current_time, "preview_mode": True, "show_admin_link": False, "show_footer": False})
 
 @app.post("/checkin", response_model=CheckinResponse)
 async def checkin(badge_id: str = Form(...)):
@@ -52,7 +52,7 @@ async def checkin(badge_id: str = Form(...)):
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    return templates.TemplateResponse("admin.html", {"request": request})
+    return templates.TemplateResponse("admin.html", {"request": request, "show_admin_link": False})
 
 @app.get("/admin/history")
 async def get_history(search: str = ""):
