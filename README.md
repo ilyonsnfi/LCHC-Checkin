@@ -35,11 +35,14 @@ docker-compose up -d
 
 1. Install dependencies:
 ```bash
-pip install -r requirements.txt
-```
+# Setup virtual environment
+python -m venv .venv
+source .venv/bin/activate
 
-2. Run the application:
-```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
