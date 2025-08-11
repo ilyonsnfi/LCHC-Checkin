@@ -1,7 +1,10 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from models import User, Checkin, CheckinRecord
+import secrets
+import hashlib
+import bcrypt
 
 import os
 DATABASE = os.getenv("DATABASE_PATH", "checkin.db")
@@ -38,6 +41,28 @@ def init_db():
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
+        )
+    """)
+    
+    # Authentication tables
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS auth_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            is_admin BOOLEAN NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
+        )
+    """)
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
+            FOREIGN KEY (username) REFERENCES auth_users (username)
         )
     """)
     
@@ -415,3 +440,211 @@ def update_settings(settings: dict) -> bool:
     except sqlite3.Error:
         conn.close()
         return False
+
+# Authentication functions
+
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt"""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify a password against its hash"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def has_admin_user() -> bool:
+    """Check if any admin user exists"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM auth_users WHERE is_admin = 1")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count > 0
+
+def create_initial_admin_if_needed():
+    """Create initial admin from environment variables if no admin exists"""
+    if has_admin_user():
+        return False
+    
+    admin_username = os.getenv("ADMIN_USERNAME", "admin")
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin")
+    
+    return create_auth_user(admin_username, admin_password, is_admin=True)
+
+def create_auth_user(username: str, password: str, is_admin: bool = False) -> bool:
+    """Create a new auth user"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        password_hash = hash_password(password)
+        cursor.execute(
+            "INSERT INTO auth_users (username, password_hash, is_admin) VALUES (?, ?, ?)",
+            (username.lower(), password_hash, is_admin)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        conn.close()
+        return False
+    except sqlite3.Error:
+        conn.close()
+        return False
+
+def authenticate_user(username: str, password: str) -> Optional[dict]:
+    """Authenticate user and return user info if successful"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM auth_users WHERE username = ?", (username.lower(),))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row and verify_password(password, row["password_hash"]):
+        # Update last login
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE auth_users SET last_login = CURRENT_TIMESTAMP WHERE username = ?",
+            (username.lower(),)
+        )
+        conn.commit()
+        conn.close()
+        
+        return {
+            "id": row["id"],
+            "username": row["username"],
+            "is_admin": bool(row["is_admin"]),
+            "created_at": row["created_at"],
+            "last_login": datetime.now().isoformat()
+        }
+    return None
+
+def get_auth_user(username: str) -> Optional[dict]:
+    """Get auth user by username"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM auth_users WHERE username = ?", (username.lower(),))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            "id": row["id"],
+            "username": row["username"],
+            "is_admin": bool(row["is_admin"]),
+            "created_at": row["created_at"],
+            "last_login": row["last_login"]
+        }
+    return None
+
+def get_all_auth_users() -> List[dict]:
+    """Get all auth users"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, is_admin, created_at, last_login FROM auth_users ORDER BY username")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [
+        {
+            "id": row["id"],
+            "username": row["username"],
+            "is_admin": bool(row["is_admin"]),
+            "created_at": row["created_at"],
+            "last_login": row["last_login"]
+        }
+        for row in rows
+    ]
+
+def delete_auth_user(username: str) -> bool:
+    """Delete an auth user (except if it's the last admin)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if this is an admin
+        cursor.execute("SELECT is_admin FROM auth_users WHERE username = ?", (username.lower(),))
+        user = cursor.fetchone()
+        
+        if user and user["is_admin"]:
+            # Count total admins
+            cursor.execute("SELECT COUNT(*) FROM auth_users WHERE is_admin = 1")
+            admin_count = cursor.fetchone()[0]
+            
+            if admin_count <= 1:
+                conn.close()
+                return False  # Can't delete the last admin
+        
+        cursor.execute("DELETE FROM auth_users WHERE username = ?", (username.lower(),))
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return success
+    except sqlite3.Error:
+        conn.close()
+        return False
+
+def create_session(username: str) -> str:
+    """Create a new session for the user"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Generate session ID
+    session_id = secrets.token_urlsafe(32)
+    
+    # Set expiration to 30 days from now
+    expires_at = datetime.now() + timedelta(days=30)
+    
+    cursor.execute(
+        "INSERT INTO sessions (id, username, expires_at) VALUES (?, ?, ?)",
+        (session_id, username.lower(), expires_at)
+    )
+    conn.commit()
+    conn.close()
+    
+    return session_id
+
+def get_session_user(session_id: str) -> Optional[dict]:
+    """Get user info from session"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT au.* FROM sessions s
+        JOIN auth_users au ON s.username = au.username
+        WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
+    """, (session_id,))
+    
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            "id": row["id"],
+            "username": row["username"],
+            "is_admin": bool(row["is_admin"]),
+            "created_at": row["created_at"],
+            "last_login": row["last_login"]
+        }
+    return None
+
+def delete_session(session_id: str) -> bool:
+    """Delete a session (logout)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    success = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    return success
+
+def cleanup_expired_sessions():
+    """Clean up expired sessions"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Delete expired sessions
+    cursor.execute("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
+    
+    conn.commit()
+    conn.close()

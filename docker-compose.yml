@@ -11,6 +11,8 @@ services:
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
       - DATABASE_PATH=/app/data/checkin.db
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=changeme123
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]

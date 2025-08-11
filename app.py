@@ -1,17 +1,37 @@
-from fastapi import FastAPI, Request, Form, File, UploadFile
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Request, Form, File, UploadFile, HTTPException, status
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import io
 from datetime import datetime
 from openpyxl import load_workbook
+from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from models import CheckinResponse, ImportResponse, User, DeleteResponse, CreateUserResponse, Settings, SettingsUpdate, SettingsResponse
-from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data, clear_checkin_history, checkout_user, get_settings, update_settings
+from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data, clear_checkin_history, checkout_user, get_settings, update_settings, has_admin_user, create_initial_admin_if_needed, create_auth_user, authenticate_user, get_auth_user, get_all_auth_users, delete_auth_user, create_session, delete_session, cleanup_expired_sessions
+from auth import AuthMiddleware, require_auth, require_admin, get_user
+
+# Auth models
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class AuthUserRequest(BaseModel):
+    username: str
+    password: str
+    is_admin: bool = False
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    # Create initial admin from environment variables if needed
+    create_initial_admin_if_needed()
+    # Clean up expired sessions on startup
+    cleanup_expired_sessions()
     yield
 
 app = FastAPI(title="RFID Checkin Station", lifespan=lifespan)
@@ -21,10 +41,69 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
+# Authentication routes
+@app.get("/auth/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    # If already logged in, redirect to home
+    if AuthMiddleware.is_authenticated(request):
+        return RedirectResponse(url="/", status_code=302)
+    
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/auth/login")
+async def login(request: LoginRequest):
+    if not request.username or not request.password:
+        return {"success": False, "message": "Username and password required"}
+    
+    # Authenticate user
+    user = authenticate_user(request.username, request.password)
+    if not user:
+        return {"success": False, "message": "Invalid username or password"}
+    
+    # Create session
+    session_id = create_session(user["username"])
+    
+    # Create response with session cookie
+    from fastapi import Response
+    import json
+    response_data = {"success": True, "message": "Login successful"}
+    resp = Response(content=json.dumps(response_data), media_type="application/json")
+    resp.set_cookie(
+        key="session_id",
+        value=session_id,
+        max_age=30 * 24 * 60 * 60,  # 30 days
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS
+        samesite="lax"
+    )
+    return resp
+
+@app.post("/auth/logout")
+async def logout(request: Request):
+    session_id = request.cookies.get("session_id")
+    if session_id:
+        delete_session(session_id)
+    
+    response = RedirectResponse(url="/auth/login", status_code=302)
+    response.delete_cookie("session_id")
+    return response
+
+# Main routes (now protected)
 @app.get("/", response_class=HTMLResponse)
 async def checkin_page(request: Request):
+    # Check authentication
+    if not AuthMiddleware.is_authenticated(request):
+        return RedirectResponse(url="/auth/login", status_code=302)
+    
+    # Check if user is admin to show/hide admin link
+    show_admin_link = AuthMiddleware.is_admin(request)
+    
     settings = get_settings()
-    return templates.TemplateResponse("checkin.html", {"request": request, "settings": settings})
+    return templates.TemplateResponse("checkin.html", {
+        "request": request, 
+        "settings": settings,
+        "show_admin_link": show_admin_link
+    })
 
 @app.get("/preview", response_class=HTMLResponse)
 async def checkin_preview(request: Request, demo_result: bool = False):
@@ -52,24 +131,66 @@ async def checkin(badge_id: str = Form(...)):
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
+    if not AuthMiddleware.is_authenticated(request):
+        return RedirectResponse(url="/auth/login", status_code=302)
+    
+    # Require admin privileges
+    if not AuthMiddleware.is_admin(request):
+        # Redirect to main page with error or show access denied
+        return RedirectResponse(url="/?error=admin_required", status_code=302)
+    
     return templates.TemplateResponse("admin.html", {"request": request, "show_admin_link": False})
 
+# Login Users Management (Admin Only)
+@app.get("/admin/auth-users")
+async def get_auth_users(request: Request):
+    AuthMiddleware.require_admin(request)
+    return get_all_auth_users()
+
+@app.post("/admin/auth-users")
+async def create_auth_user_endpoint(request: Request, user_request: AuthUserRequest):
+    AuthMiddleware.require_admin(request)
+    
+    if not user_request.username or not user_request.password:
+        return {"success": False, "message": "Username and password are required"}
+    
+    if len(user_request.password) < 6:
+        return {"success": False, "message": "Password must be at least 6 characters"}
+    
+    if create_auth_user(user_request.username, user_request.password, user_request.is_admin):
+        return {"success": True, "message": "Login user created successfully"}
+    else:
+        return {"success": False, "message": "Username already exists"}
+
+@app.delete("/admin/auth-users/{username}")
+async def delete_auth_user_endpoint(request: Request, username: str):
+    AuthMiddleware.require_admin(request)
+    
+    if delete_auth_user(username):
+        return {"success": True, "message": "Login user deleted successfully"}
+    else:
+        return {"success": False, "message": "Cannot delete user (user not found or last admin)"}
+
 @app.get("/admin/history")
-async def get_history(search: str = ""):
+async def get_history(request: Request, search: str = ""):
+    AuthMiddleware.require_admin(request)
     return get_checkin_history(search)
 
 @app.get("/admin/users")
-async def get_users(search: str = ""):
+async def get_users(request: Request, search: str = ""):
+    AuthMiddleware.require_admin(request)
     if search:
         return search_users(search)
     return get_all_users()
 
 @app.get("/admin/tables")
-async def get_tables(search: str = ""):
+async def get_tables(request: Request, search: str = ""):
+    AuthMiddleware.require_admin(request)
     return get_tables_with_users(search)
 
 @app.get("/admin/export")
-async def export_xlsx():
+async def export_xlsx(request: Request):
+    AuthMiddleware.require_admin(request)
     from openpyxl import Workbook
     
     export_data = get_export_data()
@@ -145,7 +266,8 @@ async def export_xlsx():
     )
 
 @app.post("/admin/import", response_model=ImportResponse)
-async def import_users(file: UploadFile = File(...)):
+async def import_users(request: Request, file: UploadFile = File(...)):
+    AuthMiddleware.require_admin(request)
     if not file.filename:
         return ImportResponse(success=False, message="Please upload a file")
     
@@ -250,7 +372,8 @@ async def import_users(file: UploadFile = File(...)):
         return ImportResponse(success=False, message="No valid users found", errors=errors)
 
 @app.delete("/admin/users", response_model=DeleteResponse)
-async def delete_all_users_endpoint():
+async def delete_all_users_endpoint(request: Request):
+    AuthMiddleware.require_admin(request)
     try:
         deleted_count = delete_all_users()
         return DeleteResponse(
@@ -265,7 +388,8 @@ async def delete_all_users_endpoint():
         )
 
 @app.post("/admin/users", response_model=CreateUserResponse)
-async def create_user_endpoint(user: User):
+async def create_user_endpoint(request: Request, user: User):
+    AuthMiddleware.require_admin(request)
     try:
         success, message = create_single_user(user)
         if success:
@@ -286,12 +410,14 @@ async def create_user_endpoint(user: User):
         )
 
 @app.get("/admin/settings", response_model=Settings)
-async def get_settings_endpoint():
+async def get_settings_endpoint(request: Request):
+    AuthMiddleware.require_admin(request)
     settings_dict = get_settings()
     return Settings(**settings_dict)
 
 @app.put("/admin/settings", response_model=SettingsResponse)
-async def update_settings_endpoint(settings_update: SettingsUpdate):
+async def update_settings_endpoint(request: Request, settings_update: SettingsUpdate):
+    AuthMiddleware.require_admin(request)
     try:
         # Convert to dict, excluding None values
         update_dict = {k: v for k, v in settings_update.dict().items() if v is not None}
@@ -323,7 +449,8 @@ async def update_settings_endpoint(settings_update: SettingsUpdate):
         )
 
 @app.post("/admin/upload-background")
-async def upload_background(file: UploadFile = File(...)):
+async def upload_background(request: Request, file: UploadFile = File(...)):
+    AuthMiddleware.require_admin(request)
     try:
         if not file.content_type or not file.content_type.startswith('image/'):
             return {"success": False, "message": "Please upload an image file"}
@@ -353,7 +480,8 @@ async def upload_background(file: UploadFile = File(...)):
         return {"success": False, "message": f"Error uploading image: {str(e)}"}
 
 @app.delete("/admin/remove-background")
-async def remove_background():
+async def remove_background(request: Request):
+    AuthMiddleware.require_admin(request)
     try:
         # Get current background image path
         settings = get_settings()
@@ -384,7 +512,8 @@ async def remove_background():
         return {"success": False, "message": f"Error removing background: {str(e)}"}
 
 @app.delete("/admin/clear-history")
-async def clear_checkin_history_endpoint():
+async def clear_checkin_history_endpoint(request: Request):
+    AuthMiddleware.require_admin(request)
     try:
         deleted_count = clear_checkin_history()
         return {
@@ -399,7 +528,8 @@ async def clear_checkin_history_endpoint():
         }
 
 @app.post("/admin/checkin/{employee_id}")
-async def manual_checkin(employee_id: str):
+async def manual_checkin(request: Request, employee_id: str):
+    AuthMiddleware.require_admin(request)
     try:
         user = get_user_by_employee_id(employee_id)
         
@@ -433,7 +563,8 @@ async def manual_checkin(employee_id: str):
         }
 
 @app.delete("/admin/checkout/{employee_id}")
-async def manual_checkout(employee_id: str):
+async def manual_checkout(request: Request, employee_id: str):
+    AuthMiddleware.require_admin(request)
     try:
         user = get_user_by_employee_id(employee_id)
         

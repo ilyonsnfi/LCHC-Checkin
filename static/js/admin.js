@@ -23,6 +23,8 @@ function switchTab(tab) {
         loadTables(searchQuery);
     } else if (tab === 'settings') {
         loadSettings();
+    } else if (tab === 'login-users') {
+        loadLoginUsers();
     }
 }
 
@@ -38,6 +40,8 @@ function refreshActiveTab() {
         loadTables(searchQuery);
     } else if (currentTab === 'settings') {
         loadSettings();
+    } else if (currentTab === 'login-users') {
+        loadLoginUsers();
     }
 }
 
@@ -889,4 +893,159 @@ function toggleSecondaryBanner() {
             iframe.src = '/preview?demo_result=true';
         }
     }, 50);
+}
+
+// Login Users Management
+async function loadLoginUsers() {
+    const loading = document.getElementById('login-users-loading');
+    const table = document.getElementById('login-users-table');
+    const tbody = document.getElementById('login-users-body');
+    
+    loading.style.display = 'block';
+    table.style.display = 'none';
+    
+    try {
+        const response = await fetch('/admin/auth-users');
+        const users = await response.json();
+        
+        tbody.innerHTML = '';
+        
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            
+            const canDelete = !user.is_admin || users.filter(u => u.is_admin).length > 1;
+            
+            row.innerHTML = `
+                <td>
+                    ${canDelete ? `<button class="danger-button" onclick="deleteLoginUser('${user.username}')">Delete</button>` : '<span style="color: #666; font-style: italic;">Protected</span>'}
+                </td>
+                <td>${user.username}</td>
+                <td><span class="status ${user.is_admin ? 'checked-in' : 'not-checked-in'}">${user.is_admin ? 'Admin' : 'User'}</span></td>
+                <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}</td>
+                <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+        
+    } catch (error) {
+        loading.textContent = 'Failed to load login users';
+        console.error('Error loading login users:', error);
+    }
+}
+
+function showAddLoginUserForm() {
+    document.getElementById('add-login-user-form').style.display = 'block';
+    document.getElementById('new-login-username').focus();
+}
+
+function hideAddLoginUserForm() {
+    document.getElementById('add-login-user-form').style.display = 'none';
+    document.getElementById('new-login-username').value = '';
+    document.getElementById('new-login-password').value = '';
+    document.getElementById('new-login-is-admin').checked = false;
+    document.getElementById('add-login-user-message').style.display = 'none';
+}
+
+async function createLoginUser() {
+    const username = document.getElementById('new-login-username').value.trim();
+    const password = document.getElementById('new-login-password').value;
+    const isAdmin = document.getElementById('new-login-is-admin').checked;
+    const messageDiv = document.getElementById('add-login-user-message');
+    
+    if (!username || !password) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Username and password are required';
+        messageDiv.style.display = 'block';
+        return;
+    }
+    
+    if (password.length < 6) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Password must be at least 6 characters';
+        messageDiv.style.display = 'block';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/auth-users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password,
+                is_admin: isAdmin
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = 'Login user created successfully';
+            messageDiv.style.display = 'block';
+            
+            // Clear form and reload users
+            setTimeout(() => {
+                hideAddLoginUserForm();
+                loadLoginUsers();
+            }, 1500);
+        } else {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = result.message || 'Failed to create login user';
+            messageDiv.style.display = 'block';
+        }
+        
+    } catch (error) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Error creating login user';
+        messageDiv.style.display = 'block';
+        console.error('Error:', error);
+    }
+}
+
+async function deleteLoginUser(username) {
+    if (!confirm(`Are you sure you want to delete login user "${username}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/auth-users/${username}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            loadLoginUsers(); // Reload the list
+        } else {
+            alert(result.message || 'Failed to delete login user');
+        }
+        
+    } catch (error) {
+        alert('Error deleting login user');
+        console.error('Error:', error);
+    }
+}
+
+async function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        try {
+            const response = await fetch('/auth/logout', {
+                method: 'POST'
+            });
+            
+            // Redirect to login page
+            window.location.href = '/auth/login';
+            
+        } catch (error) {
+            // Even if the request fails, redirect to login
+            window.location.href = '/auth/login';
+        }
+    }
 }

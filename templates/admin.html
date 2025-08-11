@@ -19,6 +19,7 @@
             <button onclick="exportExcel()">Export Excel</button>
             <button class="danger-button" onclick="showDeleteConfirmation()">Delete All Users</button>
             <button class="danger-button" onclick="showClearHistoryConfirmation()">Clear Checkin History</button>
+            <button onclick="logout()" style="background-color: #6c757d;">Logout</button>
         </div>
     </div>
 
@@ -35,9 +36,10 @@
     <div class="section">
         <div class="section-header">
             <div class="tab-container">
-                <button class="tab-button active" onclick="switchTab('users')">Users</button>
+                <button class="tab-button active" onclick="switchTab('users')">Guests</button>
                 <button class="tab-button" onclick="switchTab('tables')">Tables</button>
                 <button class="tab-button" onclick="switchTab('history')">Checkin History</button>
+                <button class="tab-button" onclick="switchTab('login-users')">Login Users</button>
                 <button class="tab-button" onclick="switchTab('settings')">Settings</button>
             </div>
             <div class="global-search">
@@ -107,6 +109,46 @@
                     <!-- Tables will be populated here -->
                 </div>
             </div>
+        </div>
+        
+        <div id="login-users-tab" class="tab-content">
+            <div class="users-controls">
+                <button onclick="showAddLoginUserForm()">Add Login User</button>
+            </div>
+            
+            <div id="add-login-user-form" class="add-user-section" style="display: none;">
+                <h3>Add New Login User</h3>
+                <div class="form-row">
+                    <input type="text" id="new-login-username" placeholder="Username" required>
+                    <input type="password" id="new-login-password" placeholder="Password" required>
+                </div>
+                <div class="form-row">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="new-login-is-admin">
+                        Administrator privileges
+                    </label>
+                </div>
+                <div class="form-buttons">
+                    <button onclick="createLoginUser()">Create Login User</button>
+                    <button onclick="hideAddLoginUserForm()" style="background-color: #6c757d;">Cancel</button>
+                </div>
+                <div id="add-login-user-message" class="message"></div>
+            </div>
+            
+            <div id="login-users-loading" class="loading">Loading...</div>
+            <table id="login-users-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Actions</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                    </tr>
+                </thead>
+                <tbody id="login-users-body">
+                </tbody>
+            </table>
         </div>
         
         <div id="settings-tab" class="tab-content">
