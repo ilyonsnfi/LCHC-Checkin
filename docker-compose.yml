@@ -13,6 +13,8 @@ services:
       - DATABASE_PATH=/app/data/checkin.db
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=changeme123
+      # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+      - SECRET_KEY=your-secret-key-here
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]

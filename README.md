@@ -38,6 +38,7 @@ cd checkin
 # Edit docker-compose.yml and set secure credentials
 ADMIN_USERNAME=your_admin_username
 ADMIN_PASSWORD=your_secure_password
+SECRET_KEY=your-secret-key-here  # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 3. **Run the application**:
@@ -121,6 +122,7 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ### Environment Variables
 - `ADMIN_USERNAME`: Initial admin account username (required)
 - `ADMIN_PASSWORD`: Initial admin account password (required)
+- `SECRET_KEY`: Secret key for session security (recommended)
 - `DATABASE_PATH`: Database location (default: /app/data/checkin.db)
 
 ### Health Checks
@@ -137,10 +139,11 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 - **Admin Protection**: All admin endpoints require proper authorization
 
 ### Production Deployment
-- Set `secure=True` for session cookies in production (HTTPS)
+- Session cookies use `secure=True` by default (requires HTTPS in production)
 - Use environment variables, never hardcode credentials
 - Regularly review login users and remove unused accounts
 - Consider implementing password complexity requirements
+- Generate a secure `SECRET_KEY` for enhanced session security
 
 ## XLSX Import Format
 
