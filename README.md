@@ -32,8 +32,6 @@ docker-compose up -d
 - Admin dashboard: http://localhost:8000/admin
 
 ## Manual Setup
-
-1. Install dependencies:
 ```bash
 # Setup virtual environment
 python -m venv .venv
