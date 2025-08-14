@@ -73,6 +73,8 @@ def init_db():
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("foreground_color", "#ffffff"))
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("background_color", "#f5f5f5"))
     cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("background_image", ""))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("success_sound", ""))
+    cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", ("error_sound", ""))
     
     conn.commit()
     conn.close()

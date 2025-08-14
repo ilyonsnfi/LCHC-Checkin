@@ -59,6 +59,8 @@ class Settings(BaseModel):
     foreground_color: str
     background_color: str
     background_image: str
+    success_sound: str
+    error_sound: str
 
 class SettingsUpdate(BaseModel):
     welcome_banner: Optional[str] = None
@@ -67,6 +69,8 @@ class SettingsUpdate(BaseModel):
     foreground_color: Optional[str] = None
     background_color: Optional[str] = None
     background_image: Optional[str] = None
+    success_sound: Optional[str] = None
+    error_sound: Optional[str] = None
 
 class SettingsResponse(BaseModel):
     success: bool

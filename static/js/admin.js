@@ -519,6 +519,11 @@ async function loadSettings() {
         const response = await fetch('/admin/settings');
         const settings = await response.json();
         
+        // Debug: Log settings to see what we're getting
+        console.log('Loaded settings:', settings);
+        console.log('Success sound:', settings.success_sound);
+        console.log('Error sound:', settings.error_sound);
+        
         // Populate form fields
         document.getElementById('welcome-banner').value = settings.welcome_banner;
         document.getElementById('secondary-banner').value = settings.secondary_banner;
@@ -537,6 +542,10 @@ async function loadSettings() {
             removeSection.style.display = 'none';
         }
         
+        // Show current sounds
+        updateSoundDisplay('success', settings.success_sound);
+        updateSoundDisplay('error', settings.error_sound);
+        
         loading.style.display = 'none';
         container.style.display = 'block';
         
@@ -548,6 +557,29 @@ async function loadSettings() {
     } catch (error) {
         loading.innerHTML = 'Error loading settings';
         console.error('Error:', error);
+    }
+}
+
+function updateSoundDisplay(soundType, soundPath) {
+    const currentSoundDiv = document.getElementById(`current-${soundType}-sound`);
+    const removeSection = document.getElementById(`remove-${soundType}-sound-section`);
+    
+    if (soundPath && soundPath.trim() !== '') {
+        // Extract filename from path for display
+        const filename = soundPath.split('/').pop();
+        currentSoundDiv.innerHTML = `
+            <p>Current ${soundType} sound: <strong>${filename}</strong></p>
+            <audio controls style="width: 100%; max-width: 300px;">
+                <source src="${soundPath}" type="audio/mpeg">
+                <source src="${soundPath}" type="audio/wav">
+                <source src="${soundPath}" type="audio/mp3">
+                Your browser does not support the audio element.
+            </audio>
+        `;
+        removeSection.style.display = 'block';
+    } else {
+        currentSoundDiv.innerHTML = `<p>Using default ${soundType} sound</p>`;
+        removeSection.style.display = 'none';
     }
 }
 
@@ -1073,6 +1105,104 @@ async function deleteLoginUser(username) {
         alert('Error deleting login user');
         console.error('Error:', error);
     }
+}
+
+async function handleSoundUpload(soundType) {
+    const fileInput = document.getElementById(`${soundType}-sound-file`);
+    
+    if (!fileInput.files[0]) {
+        return;
+    }
+    
+    // Check if there's already a sound
+    const currentSoundDiv = document.getElementById(`current-${soundType}-sound`);
+    const hasExistingSound = currentSoundDiv.innerHTML.includes('<audio');
+    
+    if (hasExistingSound) {
+        const confirmed = confirm(`A ${soundType} sound already exists. Do you want to replace it with the new sound?`);
+        if (!confirmed) {
+            fileInput.value = ''; // Clear the file input
+            return;
+        }
+    }
+    
+    await uploadSound(soundType);
+}
+
+async function uploadSound(soundType) {
+    const fileInput = document.getElementById(`${soundType}-sound-file`);
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sound_type', soundType);
+    
+    try {
+        const response = await fetch('/admin/upload-sound', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSoundMessage(soundType, `${soundType.charAt(0).toUpperCase() + soundType.slice(1)} sound uploaded successfully`, 'success');
+            fileInput.value = '';
+            // Update sound display
+            updateSoundDisplay(soundType, result.path);
+        } else {
+            showSoundMessage(soundType, result.message, 'error');
+        }
+        
+    } catch (error) {
+        showSoundMessage(soundType, 'Error uploading sound', 'error');
+        console.error('Error:', error);
+    }
+}
+
+async function confirmRemoveSound(soundType) {
+    const confirmed = confirm(`Are you sure you want to remove the ${soundType} sound? The file will be permanently deleted and the default sound will be used.`);
+    if (!confirmed) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('sound_type', soundType);
+        
+        const response = await fetch('/admin/remove-sound', {
+            method: 'DELETE',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSoundMessage(soundType, result.message, 'success');
+            // Show warning if file deletion failed but settings were updated
+            if (result.warning) {
+                setTimeout(() => {
+                    showSoundMessage(soundType, `Warning: ${result.warning}`, 'error');
+                }, 3000);
+            }
+            // Update display
+            updateSoundDisplay(soundType, '');
+        } else {
+            showSoundMessage(soundType, result.message, 'error');
+        }
+        
+    } catch (error) {
+        showSoundMessage(soundType, `Error removing ${soundType} sound`, 'error');
+        console.error('Error:', error);
+    }
+}
+
+function showSoundMessage(soundType, text, type) {
+    const message = document.getElementById(`${soundType}-sound-message`);
+    message.textContent = text;
+    message.className = `message ${type}`;
+    message.style.display = 'block';
+    
+    setTimeout(() => {
+        message.style.display = 'none';
+    }, 5000);
 }
 
 async function logout() {

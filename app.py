@@ -524,6 +524,77 @@ async def remove_background(request: Request):
     except Exception as e:
         return {"success": False, "message": f"Error removing background: {str(e)}"}
 
+@app.post("/admin/upload-sound")
+async def upload_sound(request: Request, sound_type: str = Form(...), file: UploadFile = File(...)):
+    AuthMiddleware.require_admin(request)
+    try:
+        if sound_type not in ['success', 'error']:
+            return {"success": False, "message": "Invalid sound type. Must be 'success' or 'error'"}
+        
+        if not file.content_type or not file.content_type.startswith('audio/'):
+            return {"success": False, "message": "Please upload an audio file"}
+        
+        # Create uploads directory if it doesn't exist
+        import os
+        uploads_dir = "static/uploads"
+        os.makedirs(uploads_dir, exist_ok=True)
+        
+        # Save file with unique name
+        import uuid
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'mp3'
+        filename = f"{sound_type}_sound_{uuid.uuid4().hex}.{file_extension}"
+        file_path = f"{uploads_dir}/{filename}"
+        
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Update settings with new sound path
+        web_path = f"/static/uploads/{filename}"
+        setting_key = f"{sound_type}_sound"
+        update_settings({setting_key: web_path})
+        
+        return {"success": True, "message": f"{sound_type.title()} sound uploaded successfully", "path": web_path}
+    
+    except Exception as e:
+        return {"success": False, "message": f"Error uploading sound: {str(e)}"}
+
+@app.delete("/admin/remove-sound")
+async def remove_sound(request: Request, sound_type: str = Form(...)):
+    AuthMiddleware.require_admin(request)
+    try:
+        if sound_type not in ['success', 'error']:
+            return {"success": False, "message": "Invalid sound type. Must be 'success' or 'error'"}
+        
+        # Get current sound path
+        settings = get_settings()
+        setting_key = f"{sound_type}_sound"
+        current_sound = settings.get(setting_key, '')
+        
+        # Remove from settings first
+        success = update_settings({setting_key: ""})
+        
+        if not success:
+            return {"success": False, "message": "Failed to update settings"}
+        
+        # Delete the physical file if it exists and is in uploads folder
+        if current_sound and current_sound.startswith('/static/uploads/'):
+            import os
+            # Convert web path to file path
+            file_path = current_sound.replace('/static/', 'static/')
+            
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError as e:
+                    # File deletion failed but settings were updated
+                    return {"success": True, "message": f"{sound_type.title()} sound removed but file deletion failed", "warning": str(e)}
+        
+        return {"success": True, "message": f"{sound_type.title()} sound removed successfully"}
+    
+    except Exception as e:
+        return {"success": False, "message": f"Error removing {sound_type} sound: {str(e)}"}
+
 @app.delete("/admin/clear-history")
 async def clear_checkin_history_endpoint(request: Request):
     AuthMiddleware.require_admin(request)

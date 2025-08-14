@@ -218,6 +218,38 @@
                     </div>
                 </div>
                 
+                <div class="settings-section">
+                    <h4>Custom Sounds</h4>
+                    
+                    <!-- Success Sound -->
+                    <div class="sound-upload-group">
+                        <h5>Success Sound</h5>
+                        <div class="form-row">
+                            <label for="success-sound-file">Upload Success Sound:</label>
+                            <input type="file" id="success-sound-file" accept="audio/*" onchange="handleSoundUpload('success')">
+                        </div>
+                        <div id="current-success-sound" style="margin-top: 10px;"></div>
+                        <div id="success-sound-message" class="message"></div>
+                        <div id="remove-success-sound-section" style="margin-top: 10px; display: none;">
+                            <button onclick="confirmRemoveSound('success')" style="background-color: #dc3545;">Remove Success Sound</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Sound -->
+                    <div class="sound-upload-group">
+                        <h5>Error Sound</h5>
+                        <div class="form-row">
+                            <label for="error-sound-file">Upload Error Sound:</label>
+                            <input type="file" id="error-sound-file" accept="audio/*" onchange="handleSoundUpload('error')">
+                        </div>
+                        <div id="current-error-sound" style="margin-top: 10px;"></div>
+                        <div id="error-sound-message" class="message"></div>
+                        <div id="remove-error-sound-section" style="margin-top: 10px; display: none;">
+                            <button onclick="confirmRemoveSound('error')" style="background-color: #dc3545;">Remove Error Sound</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="settings-buttons">
                     <button onclick="resetSettings()" style="background-color: #6c757d;">Reset to Defaults</button>
                 </div>

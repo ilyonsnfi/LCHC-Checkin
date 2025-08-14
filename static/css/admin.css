@@ -519,3 +519,24 @@ tr:hover {
     color: #495057;
     font-size: 14px;
 }
+
+/* Sound Upload Sections */
+.sound-upload-group {
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+}
+
+.sound-upload-group h5 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #495057;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+.sound-upload-group:last-child {
+    margin-bottom: 0;
+}

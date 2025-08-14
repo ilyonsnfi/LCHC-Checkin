@@ -35,10 +35,18 @@
     {% if not preview_mode %}
     <!-- Audio elements for sound effects -->
     <audio id="success-sound" preload="auto">
+        {% if settings.success_sound %}
+        <source src="{{ settings.success_sound }}" type="audio/mpeg">
+        {% else %}
         <source src="/static/audio/smb_coin.wav" type="audio/wav">
+        {% endif %}
     </audio>
     <audio id="error-sound" preload="auto">
+        {% if settings.error_sound %}
+        <source src="{{ settings.error_sound }}" type="audio/mpeg">
+        {% else %}
         <source src="/static/audio/smb_pipe.wav" type="audio/wav">
+        {% endif %}
     </audio>
 
     <script src="/static/js/checkin.js"></script>
