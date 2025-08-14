@@ -14,7 +14,9 @@ services:
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=changeme123
       # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
-      - SECRET_KEY=your-secret-key-here
+      - SECRET_KEY=changeme_1234567890123456789012345678901234567890
+      # Set to "production" to enable secure cookies (requires HTTPS)
+      - ENVIRONMENT=devlopment
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]

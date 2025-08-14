@@ -123,6 +123,7 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 - `ADMIN_USERNAME`: Initial admin account username (required)
 - `ADMIN_PASSWORD`: Initial admin account password (required)
 - `SECRET_KEY`: Secret key for session security (recommended)
+- `ENVIRONMENT`: Set to "production" for secure HTTPS cookies (default: development)
 - `DATABASE_PATH`: Database location (default: /app/data/checkin.db)
 
 ### Health Checks
@@ -139,7 +140,8 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 - **Admin Protection**: All admin endpoints require proper authorization
 
 ### Production Deployment
-- Session cookies use `secure=True` by default (requires HTTPS in production)
+- Set `ENVIRONMENT=production` to enable secure HTTPS-only cookies
+- Session cookies automatically use `secure=false` in development for HTTP
 - Use environment variables, never hardcode credentials
 - Regularly review login users and remove unused accounts
 - Consider implementing password complexity requirements

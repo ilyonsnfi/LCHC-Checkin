@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Request, Form, File, UploadFile, HTTPException, status
+from fastapi import FastAPI, Request, Form, File, UploadFile, Response
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import io
+import json
+import os
 from datetime import datetime
 from openpyxl import load_workbook
 from pydantic import BaseModel
@@ -13,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from models import CheckinResponse, ImportResponse, User, DeleteResponse, CreateUserResponse, Settings, SettingsUpdate, SettingsResponse
 from database import init_db, get_user_by_employee_id, create_checkin, get_checkin_history, create_users_batch, get_all_users, delete_all_users, create_single_user, search_users, get_tables_with_users, get_export_data, clear_checkin_history, checkout_user, get_settings, update_settings, has_admin_user, create_initial_admin_if_needed, create_auth_user, authenticate_user, get_auth_user, get_all_auth_users, delete_auth_user, create_session, delete_session, cleanup_expired_sessions
-from auth import AuthMiddleware, require_auth, require_admin, get_user
+from auth import AuthMiddleware
 
 # Auth models
 class LoginRequest(BaseModel):
@@ -51,7 +53,7 @@ async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 @app.post("/auth/login")
-async def login(request: LoginRequest):
+async def login(http_request: Request, request: LoginRequest):
     if not request.username or not request.password:
         return {"success": False, "message": "Username and password required"}
     
@@ -64,16 +66,27 @@ async def login(request: LoginRequest):
     session_id = create_session(user["username"])
     
     # Create response with session cookie
-    from fastapi import Response
-    import json
+
     response_data = {"success": True, "message": "Login successful"}
     resp = Response(content=json.dumps(response_data), media_type="application/json")
+    
+    # Use secure cookies only in production (when HTTPS is available)
+    # For local development, allow HTTP cookies
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    
+    # Check for common misconfiguration: production mode without HTTPS
+    if is_production and not http_request.url.scheme == "https":
+        return {
+            "success": False, 
+            "message": "Configuration Error: ENVIRONMENT is set to 'production' but you're not using HTTPS. Either use HTTPS or set ENVIRONMENT=development for local testing."
+        }
+    
     resp.set_cookie(
         key="session_id",
         value=session_id,
         max_age=30 * 24 * 60 * 60,  # 30 days
         httponly=True,
-        secure=True,  # Set to True in production with HTTPS
+        secure=is_production,  # True in production, False in development
         samesite="lax"
     )
     return resp
