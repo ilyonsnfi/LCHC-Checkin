@@ -141,7 +141,14 @@ async function loadTables(searchQuery = '') {
     try {
         const url = searchQuery ? `/admin/tables?search=${encodeURIComponent(searchQuery)}` : '/admin/tables';
         const response = await fetch(url);
-        const tables = await response.json();
+        let tables = await response.json();
+        
+        // Apply sorting based on selected option
+        const sortSelect = document.getElementById('table-sort');
+        if (sortSelect) {
+            const sortBy = sortSelect.value;
+            tables = sortTables(tables, sortBy);
+        }
         
         grid.innerHTML = '';
         
@@ -178,6 +185,24 @@ async function loadTables(searchQuery = '') {
     }
 }
 
+function sortTables(tables, sortBy) {
+    switch (sortBy) {
+        case 'user_count_asc':
+            return tables.sort((a, b) => a.user_count - b.user_count);
+        case 'user_count_desc':
+            return tables.sort((a, b) => b.user_count - a.user_count);
+        case 'table_number':
+        default:
+            return tables.sort((a, b) => a.table_number - b.table_number);
+    }
+}
+
+function applySortAndReload() {
+    const globalSearchInput = document.getElementById('global-search-input');
+    const searchQuery = globalSearchInput ? globalSearchInput.value.trim() : '';
+    loadTables(searchQuery);
+}
+
 async function exportExcel() {
     try {
         const response = await fetch('/admin/export');
@@ -195,6 +220,21 @@ async function exportExcel() {
     } catch (error) {
         alert('Error exporting Excel file');
         console.error('Error:', error);
+    }
+}
+
+function handleFileSelection() {
+    const fileInput = document.getElementById('excel-file');
+    const importButton = document.getElementById('import-users-btn');
+    
+    if (fileInput.files[0]) {
+        // File selected - enable button
+        importButton.disabled = false;
+        importButton.style.backgroundColor = '#007bff';
+    } else {
+        // No file - disable button
+        importButton.disabled = true;
+        importButton.style.backgroundColor = '#6c757d';
     }
 }
 
@@ -233,6 +273,8 @@ async function importFile() {
             }
             showMessage(msg, 'success');
             fileInput.value = '';
+            // Reset button state
+            handleFileSelection();
             // Refresh users tab if it exists
             loadUsers();
         } else {

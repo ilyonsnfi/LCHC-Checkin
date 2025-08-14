@@ -24,13 +24,44 @@
     </div>
 
     <div class="import-section">
-        <h2>Import Users</h2>
-        <p>Upload an Excel (.xlsx) file with headers: First Name, Last Name, Employee ID, Table Number</p>
-        <div class="file-input">
-            <input type="file" id="excel-file" accept=".xlsx">
-            <button onclick="importFile()">Import Users</button>
+        <h2>User Management</h2>
+        
+        <div class="user-management-container">
+            <!-- Add Single User -->
+            <div class="user-management-subsection">
+                <h3>Add Single User</h3>
+                <div class="users-controls">
+                    <button onclick="showAddUserForm()">Add User</button>
+                </div>
+                
+                <div id="add-user-form" class="add-user-section" style="display: none;">
+                    <div class="form-row">
+                        <input type="text" id="new-first-name" placeholder="First Name" required>
+                        <input type="text" id="new-last-name" placeholder="Last Name" required>
+                    </div>
+                    <div class="form-row">
+                        <input type="text" id="new-employee-id" placeholder="Employee ID" required>
+                        <input type="number" id="new-table-number" placeholder="Table Number" required min="1">
+                    </div>
+                    <div class="form-buttons">
+                        <button onclick="createUser()">Create User</button>
+                        <button onclick="hideAddUserForm()" style="background-color: #6c757d;">Cancel</button>
+                    </div>
+                    <div id="add-user-message" class="message"></div>
+                </div>
+            </div>
+            
+            <!-- Import Multiple Users -->
+            <div class="user-management-subsection">
+                <h3>Import Multiple Users</h3>
+                <p>Upload an Excel (.xlsx) file with headers: First Name, Last Name, Employee ID, Table Number</p>
+                <div class="file-input">
+                    <button id="import-users-btn" onclick="importFile()" disabled style="background-color: #6c757d;">Import Users</button>
+                    <input type="file" id="excel-file" accept=".xlsx" onchange="handleFileSelection()">
+                </div>
+                <div id="import-message" class="message"></div>
+            </div>
         </div>
-        <div id="import-message" class="message"></div>
     </div>
 
     <div class="section">
@@ -64,27 +95,6 @@
         </div>
         
         <div id="users-tab" class="tab-content active">
-            <div class="users-controls">
-                <button onclick="showAddUserForm()">Add User</button>
-            </div>
-            
-            <div id="add-user-form" class="add-user-section" style="display: none;">
-                <h3>Add New User</h3>
-                <div class="form-row">
-                    <input type="text" id="new-first-name" placeholder="First Name" required>
-                    <input type="text" id="new-last-name" placeholder="Last Name" required>
-                </div>
-                <div class="form-row">
-                    <input type="text" id="new-employee-id" placeholder="Employee ID" required>
-                    <input type="number" id="new-table-number" placeholder="Table Number" required min="1">
-                </div>
-                <div class="form-buttons">
-                    <button onclick="createUser()">Create User</button>
-                    <button onclick="hideAddUserForm()" style="background-color: #6c757d;">Cancel</button>
-                </div>
-                <div id="add-user-message" class="message"></div>
-            </div>
-            
             <div id="users-loading" class="loading">Loading...</div>
             <table id="users-table" style="display: none;">
                 <thead>
@@ -103,6 +113,15 @@
         </div>
         
         <div id="tables-tab" class="tab-content">
+            <div class="tables-controls">
+                <label for="table-sort">Sort by:</label>
+                <select id="table-sort" onchange="applySortAndReload()">
+                    <option value="table_number">Table Number</option>
+                    <option value="user_count_asc">Fewest People First</option>
+                    <option value="user_count_desc">Most People First</option>
+                </select>
+            </div>
+            
             <div id="tables-loading" class="loading">Loading...</div>
             <div id="tables-container" style="display: none;">
                 <div id="tables-grid" class="tables-grid">
